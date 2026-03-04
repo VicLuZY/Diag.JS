@@ -15,18 +15,30 @@
     />
     <meta name="author" content="Knut Sveidqvist, Ashish Jain" />
     <link rel="stylesheet" href="https://unpkg.com/tailwindcss@2/dist/tailwind.min.css" />
-    <!--Replace with your tailwind.css once created-->
-    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,700" rel="stylesheet" />
-    <!-- Define your gradient here - use online tools to find a gradient matching your branding-->
+    <link
+      href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,600,700"
+      rel="stylesheet"
+    />
     <style>
-      .gradient {
-        background: linear-gradient(90deg, #7557c9 0%, #f4f4f4 100%);
+      body {
+        font-family: 'Source Sans Pro', sans-serif;
       }
-      .p-shadow {
-        text-shadow: #7557c9 0px 0px 5px;
+
+      .brand-gradient {
+        background: linear-gradient(130deg, #4f39b8 0%, #7158ce 45%, #f5f3ff 100%);
+      }
+
+      .hero-shadow {
+        text-shadow: rgba(56, 43, 132, 0.28) 0 2px 14px;
+      }
+
+      .diagram-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 1rem;
+        background: white;
+        box-shadow: 0 8px 20px rgba(79, 70, 229, 0.09);
       }
     </style>
-    <!-- Google Analytics -->
     <script>
       // prettier-ignore
       (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
@@ -37,301 +49,184 @@
       ga('create', 'UA-153180559-1', 'auto');
       ga('send', 'pageview');
     </script>
-    <!-- End Google Analytics -->
   </head>
-  <body
-    class="leading-normal tracking-normal text-white gradient"
-    style="font-family: 'Source Sans Pro', sans-serif"
-  >
-    <!--Nav-->
+  <body class="text-gray-900 antialiased">
+    <header class="brand-gradient text-white">
+      <div class="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
+        <p class="text-sm uppercase tracking-widest font-semibold">MermaidPress</p>
+        <a
+          href="https://www.amazon.com/Official-Guide-Mermaid-js-beautiful-flowcharts-dp-1801078025/dp/1801078025/ref=mt_other?_encoding=UTF8&amp;me=&amp;qid=1628153965"
+          class="bg-yellow-400 hover:bg-yellow-300 text-gray-900 font-bold py-2 px-4 rounded-full transition"
+          >Buy on Amazon</a
+        >
+      </div>
 
-    <!--Hero-->
-    <div class="pt-24">
-      <div
-        style=""
-        class="container lg:px-24 max-w-5xl px-4 mx-auto flex flex-wrap flex-col md:flex-row items-center"
-      >
-        <!--Left Col-->
-        <div class="w-full md:w-1/2">
-          <div class="flex flex-col justify-center items-start text-center md:text-left">
-            <div class="flex flex-col items-center">
-              <p class="uppercase tracking-loose w-full p-shadow">MermaidPress</p>
-              <h1 class="my-4 text-5xl font-bold leading-tight p-shadow">
-                The Official Guide to Mermaid.js
-              </h1>
-              <p class="leading-normal text-2xl mb-8 p-shadow">
-                Learn to create complex diagrams and beautiful flowcharts easily using text and code
-                using Mermaid.js.
-              </p>
-              <a
-                href="https://www.amazon.com/Official-Guide-Mermaid-js-beautiful-flowcharts-dp-1801078025/dp/1801078025/ref=mt_other?_encoding=UTF8&amp;me=&amp;qid=1628153965"
-              >
-                <button
-                  style="background: #ffa41c; border: 1px solid #ff8f00"
-                  class="mx-auto lg:mx-0 hover:underline text-black font-bold rounded-full my-6 py-4 px-8 shadow-lg focus:outline-none focus:shadow-outline transform transition hover:scale-105 duration-300 ease-in-out"
-                >
-                  Purchase on Amazon
-                </button>
-              </a>
-            </div>
-          </div>
-        </div>
-        <!--Right Col-->
-        <div class="flex-1 md:w-3/5 py-6 text-center flex justify-end">
-          <img class="z-50" style="max-width: 350px" src="cover.jpg" />
-        </div>
-      </div>
-    </div>
-    <div class="relative -mt-0 lg:-mt-12">
-      <svg
-        viewBox="0 0 1428 174"
-        version="1.1"
-        xmlns="http://www.w3.org/2000/svg"
-        xmlns:xlink="http://www.w3.org/1999/xlink"
-      >
-        <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-          <g transform="translate(-2.000000, 44.000000)" fill="#FFFFFF" fill-rule="nonzero">
-            <path
-              d="M0,0 C90.7283404,0.927527913 147.912752,27.187927 291.910178,59.9119003 C387.908462,81.7278826 543.605069,89.334785 759,82.7326078 C469.336065,156.254352 216.336065,153.6679 0,74.9732496"
-              opacity="0.100000001"
-            ></path>
-            <path
-              d="M100,104.708498 C277.413333,72.2345949 426.147877,52.5246657 546.203633,45.5787101 C666.259389,38.6327546 810.524845,41.7979068 979,55.0741668 C931.069965,56.122511 810.303266,74.8455141 616.699903,111.243176 C423.096539,147.640838 250.863238,145.462612 100,104.708498 Z"
-              opacity="0.100000001"
-            ></path>
-            <path
-              d="M1046,51.6521276 C1130.83045,29.328812 1279.08318,17.607883 1439,40.1656806 L1439,120 C1271.17211,77.9435312 1140.17211,55.1609071 1046,51.6521276 Z"
-              id="Path-4"
-              opacity="0.200000003"
-            ></path>
-          </g>
-          <g transform="translate(-4.000000, 76.000000)" fill="#FFFFFF" fill-rule="nonzero">
-            <path
-              d="M0.457,34.035 C57.086,53.198 98.208,65.809 123.822,71.865 C181.454,85.495 234.295,90.29 272.033,93.459 C311.355,96.759 396.635,95.801 461.025,91.663 C486.76,90.01 518.727,86.372 556.926,80.752 C595.747,74.596 622.372,70.008 636.799,66.991 C663.913,61.324 712.501,49.503 727.605,46.128 C780.47,34.317 818.839,22.532 856.324,15.904 C922.689,4.169 955.676,2.522 1011.185,0.432 C1060.705,1.477 1097.39,3.129 1121.236,5.387 C1161.703,9.219 1208.621,17.821 1235.4,22.304 C1285.855,30.748 1354.351,47.432 1440.886,72.354 L1441.191,104.352 L1.121,104.031 L0.457,34.035 Z"
-            ></path>
-          </g>
-        </g>
-      </svg>
-    </div>
-    <section class="bg-white border-b py-8">
-      <div class="container max-w-5xl mx-auto m-8">
-        <h2 class="w-full my-2 text-5xl font-bold leading-tight text-center text-gray-800">
-          Get up to speed with using Mermaid diagrams along with real-world examples and expert tips
-          from the authors to facilitate a seamless development workflow
-        </h2>
-        <div class="w-full mb-4">
-          <div class="h-1 mx-auto gradient w-64 opacity-25 my-0 py-0 rounded-t"></div>
-        </div>
-        <div class="flex flex-wrap">
-          <div class="w-full sm:w-1/2 p-6 flex items-center">
-            <p class="text-3xl text-gray-800 font-normal leading-none mb-3">
-              Flowcharts is a diagram type that visualizes a process or an algorithm by showing the
-              steps in order, as well as the different paths the execution can take.
-            </p>
-          </div>
-          <div class="w-full sm:w-1/2 p-6 flex justify-center items-center">
-            <img class="z-50" src="flowchart.png" />
-          </div>
-        </div>
-        <div class="flex flex-wrap flex-col-reverse sm:flex-row flex justify-center items-center">
-          <div class="w-full sm:w-1/2 p-6 mt-6">
-            <img class="z-50 w-full" style="" src="sequence-diagram.png" />
-          </div>
-          <div class="w-full sm:w-1/2 p-6 mt-6">
-            <div class="align-middle flex items-center">
-              <p class="text-3xl text-gray-800 font-normal leading-none mb-3">
-                Sequence diagrams lets you model and visualize interactions between different actors
-                or objects in a system, as well as the order of those interactions
-              </p>
-            </div>
-          </div>
-        </div>
-        <div class="flex flex-wrap">
-          <div class="w-full sm:w-1/2 p-6 flex items-center">
-            <p class="text-3xl text-gray-800 font-normal leading-none mb-3">
-              A class diagram is a graphical representation that is used to visualize and describe
-              an object-oriented system.
-            </p>
-          </div>
-          <div class="w-full sm:w-1/2 p-6 flex justify-center items-center">
-            <img class="z-50" style="" src="class.png" />
-          </div>
-        </div>
-        <div class="flex flex-wrap flex-col-reverse sm:flex-row flex justify-center items-center">
-          <div class="w-full sm:w-1/2 p-6 mt-6">
-            <img class="z-50 w-full" style="" src="er.png" />
-          </div>
-          <div class="w-full sm:w-1/2 p-6 mt-6">
-            <div class="align-middle flex items-center">
-              <p class="text-3xl text-gray-800 font-normal leading-none mb-3">
-                An entity-relationship diagram is a graphical representation that is used to
-                visualize the different types of entities that exist within a system.
-              </p>
-            </div>
-          </div>
-        </div>
-        <div class="flex flex-wrap">
-          <div class="w-full sm:w-1/2 p-6 flex items-center">
-            <p class="text-3xl text-gray-800 font-normal leading-none mb-3">
-              Use State diagrams to model and document state machines, an abstract way of
-              representing a system or an algorithm.
-            </p>
-          </div>
-          <div class="w-full sm:w-1/2 p-6 flex justify-center items-center">
-            <img class="z-50" style="" src="state.png" />
-          </div>
-        </div>
-        <div class="flex flex-wrap flex-col-reverse sm:flex-row flex justify-center items-center">
-          <div class="w-full sm:w-1/2 p-6 mt-6">
-            <img class="z-50 w-full" style="" src="gantt.png" />
-          </div>
-          <div class="w-full sm:w-1/2 p-6 mt-6">
-            <div class="align-middle flex items-center">
-              <p class="text-3xl text-gray-800 font-normal leading-none mb-3">
-                A Gantt chart is a graphical representation that is used to visualize and describe
-                tasks (events or activities) over time.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-      <p class="text-3xl text-gray-800 font-normal leading-none mt-3 text-center">
-        These were a few of the diagrams supported by Mermaid.
-      </p>
-    </section>
-
-    <section class="bg-gray-100 border-b py-8">
-      <div class="container mx-auto flex flex-wrap max-w-5xl mx-auto m-8 pt-4 pb-12 px-8">
-        <h1 class="w-full my-2 text-5xl font-bold leading-tight text-center text-gray-800">
-          Book description
-        </h1>
-        <div class="w-full mb-4">
-          <p class="text-black mb-4">
-            Mermaid lets you represent diagrams using text and code which simplifies the maintenance
-            of complex diagrams. This is a great option for developers as they’re more familiar with
-            code, rather than special tools for generating diagrams. Besides, diagrams in code
-            simplify maintenance and ensure that the code is supported by version control systems.
-            In some cases, Mermaid makes refactoring support for name changes possible while also
-            enabling team collaboration for review distribution and updates.
+      <section class="max-w-6xl mx-auto px-6 pt-8 pb-20 grid lg:grid-cols-2 gap-12 items-center">
+        <div>
+          <p class="uppercase text-sm tracking-widest font-semibold mb-4">The Official Guide</p>
+          <h1 class="text-4xl md:text-5xl font-bold leading-tight hero-shadow mb-6">
+            Learn Mermaid.js from the creator and core team
+          </h1>
+          <p class="text-xl md:text-2xl leading-relaxed hero-shadow mb-8 text-indigo-50">
+            Build robust documentation with text-based diagrams. This practical guide shows you how
+            to design, maintain, and scale Mermaid workflows across teams.
           </p>
-          <p class="text-black mb-4">
-            Developers working with any system will be able to put their knowledge to work with this
-            practical guide to using Mermaid for documentation. The book is also a great reference
-            for looking up the syntax for specific diagrams when authoring diagrams.
-          </p>
-          <p class="text-black mb-4">
-            You’ll start by getting up to speed with the importance of accurate and visual
-            documentation. Next, the book introduces Mermaid and establishes how to use it to create
-            effective documentation. By using different tools, editors, or a custom documentation
-            platform, you’ll also learn how to use Mermaid syntax for various diagrams. Later
-            chapters cover advanced configuration settings and theme options to manipulate your
-            diagram as per your needs.
-          </p>
-          <p class="text-black mb-4">
-            By the end of this Mermaid book, you’ll have become well-versed with the different types
-            of Mermaid diagrams and how they can be used in your workflows.
-          </p>
-        </div>
-      </div>
-    </section>
-    <section class="bg-white py-8">
-      <div class="container mx-auto px-2 pt-4 pb-12 text-gray-800">
-        <h1 class="w-full my-2 text-5xl font-bold leading-tight text-center text-gray-800">
-          What you will learn
-        </h1>
-        <div class="w-full mb-4">
-          <div class="h-1 mx-auto gradient w-64 opacity-25 my-0 py-0 rounded-t"></div>
-        </div>
-        <div class="flex flex-col sm:flex-row justify-center items-center pt-12 my-12 sm:my-4">
-          <div class="flex flex-col mx-4 rounded-lg bg-white mt-4 sm:-mt-6 shadow-lg z-10">
-            <div class="flex-1 bg-white rounded-t rounded-b-none overflow-hidden shadow">
-              <ul class="w-full text-base font-bold px-4">
-                <li class="border-b py-4 px-4">
-                  Understand good and bad documentation, and the art of effective documentation
-                </li>
-                <li class="border-b py-4 px-4">
-                  Become well-versed with maintaining complex diagrams with ease
-                </li>
-                <li class="border-b py-4 px-4">
-                  Learn how to set up a custom documentation system
-                </li>
-                <li class="border-b py-4 px-4">
-                  Learn how to implement Mermaid diagrams in your workflows
-                </li>
-                <li class="border-b py-4 px-4">
-                  Understand how to set up themes for a Mermaid diagram for an entire site
-                </li>
-                <li class="border-b py-4 px-4">
-                  Discover how to draw different types of diagrams such as flowcharts, class
-                  diagrams, Gantt charts, and more
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-    <!-- Change the colour #f8fafc to match the previous section colour -->
-    <svg
-      class="wave-top"
-      viewBox="0 0 1439 147"
-      version="1.1"
-      xmlns="http://www.w3.org/2000/svg"
-      xmlns:xlink="http://www.w3.org/1999/xlink"
-    >
-      <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-        <g transform="translate(-1.000000, -14.000000)" fill-rule="nonzero">
-          <g class="wave" fill="#f8fafc">
-            <path
-              d="M1440,84 C1383.555,64.3 1342.555,51.3 1317,45 C1259.5,30.824 1206.707,25.526 1169,22 C1129.711,18.326 1044.426,18.475 980,22 C954.25,23.409 922.25,26.742 884,32 C845.122,37.787 818.455,42.121 804,45 C776.833,50.41 728.136,61.77 713,65 C660.023,76.309 621.544,87.729 584,94 C517.525,105.104 484.525,106.438 429,108 C379.49,106.484 342.823,104.484 319,102 C278.571,97.783 231.737,88.736 205,84 C154.629,75.076 86.296,57.743 0,32 L0,0 L1440,0 L1440,84 Z"
-            ></path>
-          </g>
-          <g transform="translate(1.000000, 15.000000)" fill="#FFFFFF">
-            <g
-              transform="translate(719.500000, 68.500000) rotate(-180.000000) translate(-719.500000, -68.500000) "
+          <div class="flex flex-wrap gap-4">
+            <a
+              href="https://www.amazon.com/Official-Guide-Mermaid-js-beautiful-flowcharts-dp-1801078025/dp/1801078025/ref=mt_other?_encoding=UTF8&amp;me=&amp;qid=1628153965"
+              class="bg-yellow-400 hover:bg-yellow-300 text-gray-900 font-bold py-3 px-6 rounded-full transition"
+              >Purchase the book</a
             >
-              <path
-                d="M0,0 C90.7283404,0.927527913 147.912752,27.187927 291.910178,59.9119003 C387.908462,81.7278826 543.605069,89.334785 759,82.7326078 C469.336065,156.254352 216.336065,153.6679 0,74.9732496"
-                opacity="0.100000001"
-              ></path>
-              <path
-                d="M100,104.708498 C277.413333,72.2345949 426.147877,52.5246657 546.203633,45.5787101 C666.259389,38.6327546 810.524845,41.7979068 979,55.0741668 C931.069965,56.122511 810.303266,74.8455141 616.699903,111.243176 C423.096539,147.640838 250.863238,145.462612 100,104.708498 Z"
-                opacity="0.100000001"
-              ></path>
-              <path
-                d="M1046,51.6521276 C1130.83045,29.328812 1279.08318,17.607883 1439,40.1656806 L1439,120 C1271.17211,77.9435312 1140.17211,55.1609071 1046,51.6521276 Z"
-                opacity="0.200000003"
-              ></path>
-            </g>
-          </g>
-        </g>
-      </g>
-    </svg>
-    <section class="container mx-auto text-center py-6 mb-12">
-      <h1 class="w-full my-2 text-5xl font-bold leading-tight text-center text-white p-shadow">
-        Purchase The Official Guide to Mermaid.js
-      </h1>
-      <div class="w-full mb-4">
-        <div class="h-1 mx-auto bg-white w-1/6 opacity-25 my-0 py-0 rounded-t"></div>
-      </div>
-      <h3 class="my-4 text-3xl leading-tight">
-        <p class="mb-4 p-shadow">Written by Knut Sveidqvist and Ashish Jain.</p>
-        <p class="p-shadow">
-          Knut is the creator of Mermaid and both authors are active core team members of the
+            <a
+              href="#inside"
+              class="border border-white hover:bg-white hover:text-indigo-900 font-semibold py-3 px-6 rounded-full transition"
+              >See what&apos;s inside</a
+            >
+          </div>
+        </div>
+        <div class="flex justify-center lg:justify-end">
+          <img
+            class="w-full max-w-sm rounded-xl shadow-2xl"
+            src="cover.jpg"
+            alt="The Official Guide to Mermaid.js book cover"
+          />
+        </div>
+      </section>
+    </header>
+
+    <main>
+      <section id="inside" class="bg-white py-16">
+        <div class="max-w-6xl mx-auto px-6">
+          <h2 class="text-4xl font-bold text-center mb-4">What&apos;s inside the book</h2>
+          <p class="text-xl text-gray-600 text-center max-w-3xl mx-auto mb-12">
+            Move from diagram basics to advanced documentation systems with clear examples,
+            practical workflows, and hands-on Mermaid syntax.
+          </p>
+
+          <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <article class="diagram-card p-6">
+              <img src="flowchart.png" alt="Example flowchart diagram" class="mb-4 rounded-md" />
+              <h3 class="text-2xl font-semibold mb-2">Flowcharts</h3>
+              <p class="text-gray-700">
+                Model processes and algorithms with branching logic that is simple to read and easy
+                to maintain in code.
+              </p>
+            </article>
+
+            <article class="diagram-card p-6">
+              <img
+                src="sequence-diagram.png"
+                alt="Example sequence diagram"
+                class="mb-4 rounded-md"
+              />
+              <h3 class="text-2xl font-semibold mb-2">Sequence diagrams</h3>
+              <p class="text-gray-700">
+                Visualize interactions between services, components, and actors to communicate
+                system behavior over time.
+              </p>
+            </article>
+
+            <article class="diagram-card p-6">
+              <img src="class.png" alt="Example class diagram" class="mb-4 rounded-md" />
+              <h3 class="text-2xl font-semibold mb-2">Class diagrams</h3>
+              <p class="text-gray-700">
+                Document object-oriented structures including classes, attributes, and relationships
+                across your domain model.
+              </p>
+            </article>
+
+            <article class="diagram-card p-6">
+              <img src="er.png" alt="Example entity relationship diagram" class="mb-4 rounded-md" />
+              <h3 class="text-2xl font-semibold mb-2">Entity relationship diagrams</h3>
+              <p class="text-gray-700">
+                Describe data models clearly by mapping entities and their relationships in a
+                consistent text-based format.
+              </p>
+            </article>
+
+            <article class="diagram-card p-6">
+              <img src="state.png" alt="Example state diagram" class="mb-4 rounded-md" />
+              <h3 class="text-2xl font-semibold mb-2">State diagrams</h3>
+              <p class="text-gray-700">
+                Capture system state transitions for finite state machines and lifecycle-oriented
+                workflows.
+              </p>
+            </article>
+
+            <article class="diagram-card p-6">
+              <img src="gantt.png" alt="Example gantt chart" class="mb-4 rounded-md" />
+              <h3 class="text-2xl font-semibold mb-2">Gantt charts</h3>
+              <p class="text-gray-700">
+                Track project schedules, dependencies, and deadlines with concise definitions stored
+                directly with your docs.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-gray-50 py-16 border-t border-b border-gray-200">
+        <div class="max-w-5xl mx-auto px-6">
+          <h2 class="text-4xl font-bold text-center mb-8">Book description</h2>
+          <div class="space-y-5 text-lg text-gray-700 leading-relaxed">
+            <p>
+              Mermaid lets you represent diagrams using text and code, making complex documentation
+              easier to maintain and review. For software teams, this means fewer disconnected
+              assets and better alignment between implementation and docs.
+            </p>
+            <p>
+              This guide explains how to use Mermaid effectively in documentation systems, editors,
+              and developer workflows. You&apos;ll learn practical syntax patterns and real project
+              approaches that help teams scale visual documentation.
+            </p>
+            <p>
+              By the end, you&apos;ll be comfortable selecting the right diagram type, applying
+              themes, and integrating Mermaid into day-to-day engineering processes.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-white py-16">
+        <div class="max-w-4xl mx-auto px-6">
+          <h2 class="text-4xl font-bold text-center mb-10">What you&apos;ll learn</h2>
+          <ul class="space-y-4 text-lg">
+            <li class="diagram-card p-5">
+              Identify what makes technical documentation clear and useful.
+            </li>
+            <li class="diagram-card p-5">
+              Model complex systems using maintainable text-based diagrams.
+            </li>
+            <li class="diagram-card p-5">
+              Implement Mermaid diagrams throughout your documentation workflow.
+            </li>
+            <li class="diagram-card p-5">
+              Configure themes for consistency across an entire project.
+            </li>
+            <li class="diagram-card p-5">
+              Build confidence with popular diagram types and Mermaid syntax.
+            </li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <footer class="brand-gradient text-white py-16">
+      <div class="max-w-4xl mx-auto px-6 text-center">
+        <h2 class="text-4xl font-bold hero-shadow mb-4">
+          Purchase The Official Guide to Mermaid.js
+        </h2>
+        <p class="text-2xl mb-2 hero-shadow">Written by Knut Sveidqvist and Ashish Jain.</p>
+        <p class="text-xl text-indigo-100 mb-8">
+          Knut is the creator of Mermaid, and both authors are active core team members of the
           Mermaid open-source project.
         </p>
-      </h3>
-      <a
-        href="https://www.amazon.com/Official-Guide-Mermaid-js-beautiful-flowcharts-dp-1801078025/dp/1801078025/ref=mt_other?_encoding=UTF8&amp;me=&amp;qid=1628153965"
-      >
-        <button
-          style="background: #ffa41c; border: 1px solid #ff8f00"
-          class="mx-auto lg:mx-0 hover:underline bg-white text-gray-800 font-bold rounded-full my-6 py-4 px-8 shadow-lg focus:outline-none focus:shadow-outline transform transition hover:scale-105 duration-300 ease-in-out"
+        <a
+          href="https://www.amazon.com/Official-Guide-Mermaid-js-beautiful-flowcharts-dp-1801078025/dp/1801078025/ref=mt_other?_encoding=UTF8&amp;me=&amp;qid=1628153965"
+          class="inline-block bg-yellow-400 hover:bg-yellow-300 text-gray-900 font-bold py-4 px-8 rounded-full transition"
+          >Purchase now on Amazon</a
         >
-          Purchase Now on Amazon
-        </button>
-      </a>
-    </section>
-    <!--Footer-->
+      </div>
+    </footer>
   </body>
 </html>
