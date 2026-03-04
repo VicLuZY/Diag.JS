@@ -43,7 +43,10 @@ import { JSDOM } from 'jsdom';
 import { dump, load, JSON_SCHEMA } from 'js-yaml';
 import type { Code, ListItem, PhrasingContent, Root, Text, YAML } from 'mdast';
 import { register } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import { posix, dirname, relative, join } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 import prettier from 'prettier';
 import { remark } from 'remark';
 import remarkFrontmatter from 'remark-frontmatter';
@@ -58,8 +61,9 @@ import { visit } from 'unist-util-visit';
 register('./loadHook.mjs', import.meta.url);
 const { shapesDefs } = await import('../src/rendering-util/rendering-elements/shapes.js');
 
-export const MERMAID_RELEASE_VERSION = JSON.parse(readFileSync('../mermaid/package.json', 'utf8'))
-  .version as string;
+export const MERMAID_RELEASE_VERSION = JSON.parse(
+  readFileSync(join(__dirname, '..', 'package.json'), 'utf8')
+).version as string;
 const MERMAID_MAJOR_VERSION = MERMAID_RELEASE_VERSION.split('.')[0];
 const CDN_URL = 'https://cdn.jsdelivr.net/npm'; // 'https://unpkg.com';
 
