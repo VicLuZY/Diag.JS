@@ -11,38 +11,38 @@
     <h1>Sankey diagram demos</h1>
     <h2>FY20-21 Performance</h2>
     <pre class="mermaid">
-      ---
-      config:
-        sankey:
-          showValues: true
-          prefix: $
-          suffix: B
-          width: 800
-          nodeAlignment: left
-      ---
-     sankey
-        a,b,8
-        b,c,8
-        c,d,8
-        d,e,8
+---
+config:
+  sankey:
+    showValues: true
+    prefix: $
+    suffix: B
+    width: 800
+    nodeAlignment: left
+---
+sankey
+  a,b,8
+  b,c,8
+  c,d,8
+  d,e,8
 
-        x,c,4
-        c,y,4
+  x,c,4
+  c,y,4
     </pre>
 
     <h2>Energy flow</h2>
     <pre class="mermaid">
-      ---
-      config:
-        sankey:
-          useMaxWidth: true
-          showValues: false
-          width: 1200
-          height: 600
-          linkColor: gradient
-          nodeAlignment: justify
-      ---
-      sankey
+---
+config:
+  sankey:
+    useMaxWidth: true
+    showValues: false
+    width: 1200
+    height: 600
+    linkColor: gradient
+    nodeAlignment: justify
+---
+sankey
 
       Agricultural 'waste',Bio-conversion,124.729
       Bio-conversion,Liquid,0.597
