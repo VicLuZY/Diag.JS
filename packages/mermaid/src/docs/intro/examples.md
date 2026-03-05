@@ -1,19 +1,20 @@
 ## Diagram Types
 
 ### [Single-line diagram (SLD)](/intro/) — DiagJS primary
+Rule: all SLD type definitions must be exactly 4 uppercase characters.
 
 ```mermaid-example
 sld LR
-UTL1[Utility]{v="480V"}
-GEN1[Generator]{v="480V"}
-ATS1[Main ATS]{profile="basic", out_breaker=true}
-SWG1[Switchgear]{v="480V"}
-UTL1 --> ATS1:norm
-GEN1 --> ATS1:emer
-ATS1:load ==> SWG1
-SWG1 -->|Feeder F-12| CND1{type="EMT", len="12m"} --> CAB1{cond="4C", size="3/0"} --> PNL1[Panel L1]{v="480V"}
-PNL1 --> CBR_PNL1_1 --> LGT1[Lighting]
-PNL1 --> CBR_PNL1_2 --> RCP1[Receptacles]
+UTIL1[Utility]{v="480V"}
+GENR1[Generator]{v="480V"}
+ATSW1[Main ATS]{profile="basic", out_breaker=true}
+SWGR1[Switchgear]{v="480V"}
+UTIL1 --> ATSW1:norm
+GENR1 --> ATSW1:emer
+ATSW1:load ==> SWGR1
+SWGR1 -->|Feeder F-12| COND1{type="EMTC", len="12m"} --> CABL1{cond="4C", size="3/0"} --> PANL1[Panel L1]{v="480V"}
+PANL1 --> BRKR_PANL1_1 --> LGHT1[Lighting]
+PANL1 --> BRKR_PANL1_2 --> RCPT1[Receptacles]
 ```
 
 ### [Flowchart](../syntax/flowchart.md?id=flowcharts-basic-syntax)

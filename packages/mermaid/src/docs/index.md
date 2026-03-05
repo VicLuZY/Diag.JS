@@ -26,7 +26,7 @@ features:
   - icon:
       src: /1-Callout-Easy.svg
     title: Single-line diagrams (SLD)
-    details: Primary diagram type with ATS, GEN, UTIL, CDP nodes and cable semantics.
+    details: Primary diagram type with 4-character type definitions (for example ATSW, GENR, UTIL, CDPN) and cable semantics.
     link: /intro/
   - icon:
       src: /2-Callout-Integrations.svg
@@ -43,29 +43,31 @@ features:
 ## Example: Single-line diagram (SLD)
 
 A comprehensive building power example: utility and generator through an ATS, switchgear, conduit/cable run, and panel distribution to loads.
+Rule: all SLD type definitions must be exactly 4 uppercase characters.
 
 ```mermaid-example
 sld LR
+%% Rule: all type definitions use exactly 4 uppercase characters.
 %% Sources
-UTL1[Utility]{v="480V"}
-GEN1[Generator]{v="480V"}
+UTIL1[Utility]{v="480V"}
+GENR1[Generator]{v="480V"}
 
 %% ATS assembly (basic + output breaker)
-ATS1[Main ATS]{profile="basic", out_breaker=true}
-SWG1[Switchgear]{v="480V"}
+ATSW1[Main ATS]{profile="basic", out_breaker=true}
+SWGR1[Switchgear]{v="480V"}
 
 %% Utility path
-UTL1 --> ATS1:norm
-GEN1 --> ATS1:emer
-ATS1:load ==> SWG1
+UTIL1 --> ATSW1:norm
+GENR1 --> ATSW1:emer
+ATSW1:load ==> SWGR1
 
 %% Feeder with label and metadata
-SWG1 -->|Feeder F-12| CND1{type="EMT", size="2in", len="12m"}
-    --> CAB1{cond="4C", size="3/0", len="12m"}
-    --> PNL1[Panel L1]{v="480V"}
+SWGR1 -->|Feeder F-12| COND1{type="EMTC", size="2in", len="12m"}
+    --> CABL1{cond="4C", size="3/0", len="12m"}
+    --> PANL1[Panel L1]{v="480V"}
 
 %% Panel branches
-PNL1 --> CBR_PNL1_1 --> CAB2 --> LGT1[Lighting]
-PNL1 --> CBR_PNL1_2 --> CAB3 --> RCP1[Receptacles]
-PNL1 --> CBR_PNL1_3 --> CAB4 --> AHU1[AHU]
+PANL1 --> BRKR_PANL1_1 --> CABL2 --> LGHT1[Lighting]
+PANL1 --> BRKR_PANL1_2 --> CABL3 --> RCPT1[Receptacles]
+PANL1 --> BRKR_PANL1_3 --> CABL4 --> AIRH1[AHU]
 ```

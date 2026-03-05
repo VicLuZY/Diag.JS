@@ -4,53 +4,56 @@ export default {
   id: 'sld',
   name: 'Single-line diagram (SLD)',
   description:
-    'Electrical single-line diagrams with ATS, GEN, UTIL, bus, panel, cable/conduit, and edge metadata.',
+    'Electrical single-line diagrams with 4-character type codes (rule), ATS/GEN/UTIL semantics, bus/panel distribution, cable/conduit runs, and edge metadata.',
   examples: [
     {
       title: 'Building power: ATS + switchgear + panel distribution',
       isDefault: true,
       code: `sld LR
+%% Rule: all type definitions use exactly 4 uppercase characters.
 %% Sources
-UTL1[Utility]{v="480V"}
-GEN1[Generator]{v="480V"}
+UTIL1[Utility]{v="480V"}
+GENR1[Generator]{v="480V"}
 
 %% ATS assembly (basic + output breaker)
-ATS1[Main ATS]{profile="basic", out_breaker=true}
-SWG1[Switchgear]{v="480V"}
+ATSW1[Main ATS]{profile="basic", out_breaker=true}
+SWGR1[Switchgear]{v="480V"}
 
 %% Utility path
-UTL1 --> ATS1:norm
-GEN1 --> ATS1:emer
-ATS1:load ==> SWG1
+UTIL1 --> ATSW1:norm
+GENR1 --> ATSW1:emer
+ATSW1:load ==> SWGR1
 
 %% Feeder with label and metadata
-SWG1 -->|Feeder F-12| CND1{type="EMT", size="2in", len="12m"}
-    --> CAB1{cond="4C", size="3/0", len="12m"}
-    --> PNL1[Panel L1]{v="480V"}
+SWGR1 -->|Feeder F-12| COND1{type="EMTC", size="2in", len="12m"}
+    --> CABL1{cond="4C", size="3/0", len="12m"}
+    --> PANL1[Panel L1]{v="480V"}
 
 %% Panel branches
-PNL1 --> CBR_PNL1_1 --> CAB2 --> LGT1[Lighting]
-PNL1 --> CBR_PNL1_2 --> CAB3 --> RCP1[Receptacles]
-PNL1 --> CBR_PNL1_3 --> CAB4 --> AHU1[AHU]`,
+PANL1 --> BRKR_PANL1_1 --> CABL2 --> LGHT1[Lighting]
+PANL1 --> BRKR_PANL1_2 --> CABL3 --> RCPT1[Receptacles]
+PANL1 --> BRKR_PANL1_3 --> CABL4 --> AIRH1[AHU]`,
     },
     {
       title: 'Service transformer and panel',
       code: `sld LR
-UTL1[Utility]{v="12.47kV"}
-TRF1[Service XFMR]{kva=1500, v_in="12.47kV", v_out="480V"}
-SWG1[Switchgear]{v="480V"}
-PNL1[Panel]{v="480V"}
+%% Rule: all type definitions use exactly 4 uppercase characters.
+UTIL1[Utility]{v="12.47kV"}
+TRFM1[Service XFMR]{kva=1500, v_in="12.47kV", v_out="480V"}
+SWGR1[Switchgear]{v="480V"}
+PANL1[Panel]{v="480V"}
 
-UTL1 --> TRF1
-TRF1 ==> SWG1
-SWG1 -->|F-01| PNL1`,
+UTIL1 --> TRFM1
+TRFM1 ==> SWGR1
+SWGR1 -->|F-01| PANL1`,
     },
     {
       title: 'Bus tie between switchgear sections',
       code: `sld LR
-SWG_A[SWG A]{v="480V"} <--> CBR_TIE[Bus Tie]{state="NO"} <--> SWG_B[SWG B]{v="480V"}
-SWG_A --> LOD1[Load A]
-SWG_B --> LOD2[Load B]`,
+%% Rule: all type definitions use exactly 4 uppercase characters.
+SWGR_A[SWG A]{v="480V"} <--> BRKR_TIE[Bus Tie]{state="NO"} <--> SWGR_B[SWG B]{v="480V"}
+SWGR_A --> LOAD1[Load A]
+SWGR_B --> LOAD2[Load B]`,
     },
   ],
 } satisfies DiagramMetadata;

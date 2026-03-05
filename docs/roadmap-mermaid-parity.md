@@ -2,6 +2,8 @@
 
 This document captures a Mermaid-inspired roadmap for expanding SLD-Graph functionality while preserving the electrical semantics layer. It is written as epics/tasks with deliverables and acceptance criteria so the work can be split into PR-sized issues.
 
+Rule: all SLD device type definitions use exactly 4 uppercase characters.
+
 ## Epic 0: Legal, attribution, and upstream strategy
 
 ### Task 0.1: License and attribution compliance
@@ -65,7 +67,7 @@ Mermaid has a dedicated parser package (`@mermaid-js/parser`) to evaluate, or yo
 **Electrical extensions to support**
 
 - Metadata blocks: `A[Label]{ v="480V", floor=2 }`
-- Ports: `ATS1:emer --> MDP1:in`
+- Ports: `ATSW1:emer --> MDPN1:in`
 
 **Acceptance**
 
@@ -116,10 +118,10 @@ Mermaid’s flowcharts assign nodes to ranks/levels; users even “stretch” li
 
 **Rules**
 
-- Sources (`UTL`, `GEN`, `UPS` when acting as source) rank upstream.
-- Transformers (`TRF`) enforce a voltage boundary: primary upstream of secondary.
-- `ATS` has two sources and one load: sources upstream of load.
-- Panels (`MDP`, `PNL`, `CDP`, `MCC`) rank by distance from source.
+- Sources (`UTIL`, `GENR`, `UPSS` when acting as source) rank upstream.
+- Transformers (`TRFM`) enforce a voltage boundary: primary upstream of secondary.
+- `ATSW` has two sources and one load: sources upstream of load.
+- Panels (`MDPN`, `PANL`, `CDPN`, `MCCR`) rank by distance from source.
 - Loads rank downstream and cluster under their feeding panel.
 
 **Acceptance**
@@ -160,7 +162,7 @@ Mermaid’s flowcharts assign nodes to ranks/levels; users even “stretch” li
 - `A((circle))`: sources (utility, generator)
 - `A{diamond}`: switching logic or protective device (or reserve for future)
 - `A[[subroutine]]`: transformers or packaged equipment
-- Custom alias: `ATS1((ATS))` could become a standardized ATS symbol in the renderer
+- Custom alias: `ATSW1((ATSW))` could become a standardized ATSW symbol in the renderer
 
 **Acceptance**
 
@@ -174,7 +176,7 @@ Mermaid’s flowcharts assign nodes to ranks/levels; users even “stretch” li
 Support:
 
 - `classDef emergency ...`
-- `class ATS1,PNL_E emergency`
+- `class ATSW1,PANL_E emergency`
 
 Then add an electrical convenience layer:
 
@@ -189,14 +191,14 @@ Then add an electrical convenience layer:
 
 ### Task 4.1: Port-aware edge attachment
 
-**Goal:** `ATS1:emer` connects to the correct side of the ATS symbol.
+**Goal:** `ATSW1:emer` connects to the correct side of the ATSW symbol.
 
 **Requirements**
 
 - Define per-device port anchor points in renderer:
-  - `ATS.norm` left-top, `ATS.emer` left-bottom, `ATS.load` right
-  - `TRF.pri` left, `TRF.sec` right
-  - `PNL.in` left, `PNL.out*` right
+  - `ATSW.norm` left-top, `ATSW.emer` left-bottom, `ATSW.load` right
+  - `TRFM.pri` left, `TRFM.sec` right
+  - `PANL.in` left, `PANL.out*` right
 - If port omitted, infer best port based on edge direction and device definition.
 
 **Acceptance**
@@ -229,7 +231,7 @@ This is the “SLD is not just a flowchart” part.
 **Deliverables**
 
 - `src/electrical/deviceCatalog.ts`:
-  - codes: UTL, GEN, ATS, TRF, UPS, SWG, MDP, PNL, CDP, MCC, LOD, MTR, LGT, RCPT, HVAC, plus protection (CBR, FUS, MSW)
+  - codes: UTIL, GENR, ATSW, TRFM, UPSS, SWGR, MDPN, PANL, CDPN, MCCR, LOAD, MOTR, LGHT, RCPT, HVAC, plus protection (BRKR, FUSE, MSWT)
   - each includes:
     - ports
     - port direction (in/out)
@@ -244,10 +246,10 @@ This is the “SLD is not just a flowchart” part.
 
 **Checks**
 
-- ATS must have exactly two sources into `norm` and `emer` and one outgoing from `load`
-- TRF must have one incoming to `pri` and outgoing from `sec`
+- ATSW must have exactly two sources into `norm` and `emer` and one outgoing from `load`
+- TRFM must have one incoming to `pri` and outgoing from `sec`
 - Panels must have max one upstream feed unless explicitly tied
-- Voltage mismatch detection if `v` metadata present (warn if direct mismatch without TRF)
+- Voltage mismatch detection if `v` metadata present (warn if direct mismatch without TRFM)
 - Cycles (warn or error depending on configuration)
 - Unknown device code or unknown port (error)
 
@@ -281,10 +283,10 @@ graph TD
 
 Examples to include:
 
-- Utility + generator + ATS + emergency panel
+- Utility + generator + ATSW + emergency panel
 - Service transformer + main switchgear + multiple floors
-- MCC branch motor loads
-- UPS feeding critical distribution
+- MCCR branch motor loads
+- UPSS feeding critical distribution
 - Tie between two panels (normally open dashed)
 - Multi-transformer building (480V backbone, 208V floor panels)
 
