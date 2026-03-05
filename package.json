@@ -45,7 +45,7 @@
     "test": "pnpm lint && vitest run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
-    "test:check:tsc": "tsx scripts/tsc-check.ts",
+    "test:check:tsc": "pnpm build && tsx scripts/tsc-check.ts",
     "prepare": "husky && pnpm build",
     "pre-commit": "lint-staged"
   },

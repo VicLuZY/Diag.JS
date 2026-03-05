@@ -1,33 +1,107 @@
-@import 'font-awesome/css/font-awesome.min.css';
-@import '@mdi/font/css/materialdesignicons.min.css';
-
-/* Colors: Brand */
-:root {
-  /* use for colored text */
-  --vp-c-pink-1: #e0095f;
-
-  /* use for hover state of button */
-  --vp-c-pink-2: #b0134a;
-
-  /* use for background button color */
-  --vp-c-pink-3: #e0095f;
-
-  /* use for custom container or badges */
-  --vp-c-pink-4: rgba(159, 122, 234, 0.14);
-}
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap');
 
 :root {
-  --vp-c-brand-1: var(--vp-c-pink-1);
-  --vp-c-brand-2: var(--vp-c-pink-2);
-  --vp-c-brand-3: var(--vp-c-pink-3);
+  --vp-c-brand-1: #0f766e;
+  --vp-c-brand-2: #115e59;
+  --vp-c-brand-3: #134e4a;
+  --vp-c-brand-soft: rgba(15, 118, 110, 0.16);
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #0f766e 0%, #0284c7 45%, #f97316 100%);
+  --inkline-grid: rgba(17, 94, 89, 0.08);
+  --inkline-surface: rgba(255, 255, 255, 0.92);
 }
 
-.vp-doc > div {
-  width: 100%;
+body {
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+  background:
+    radial-gradient(circle at 90% -10%, rgba(14, 165, 233, 0.14), transparent 30%),
+    radial-gradient(circle at 0% 0%, rgba(249, 115, 22, 0.1), transparent 24%),
+    linear-gradient(180deg, #f8fafc 0%, #ecfeff 100%);
 }
 
-a.edit {
-  margin: 12px;
-  position: relative;
-  top: 10px;
+.dark body {
+  background:
+    radial-gradient(circle at 90% -10%, rgba(56, 189, 248, 0.16), transparent 30%),
+    radial-gradient(circle at 0% 0%, rgba(251, 146, 60, 0.14), transparent 24%),
+    linear-gradient(180deg, #0b1120 0%, #08121b 100%);
+}
+
+.Layout::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, var(--inkline-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--inkline-grid) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), transparent 70%);
+  z-index: -1;
+}
+
+.VPNavBar {
+  backdrop-filter: blur(14px);
+  background: color-mix(in srgb, var(--inkline-surface) 90%, transparent);
+}
+
+.dark .VPNavBar {
+  background: color-mix(in srgb, #0b1120 86%, transparent);
+}
+
+.VPHero {
+  border: 1px solid color-mix(in srgb, var(--vp-c-brand-1) 35%, transparent);
+  border-radius: 28px;
+  padding: clamp(1.3rem, 2vw, 2rem);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(240, 253, 250, 0.75)),
+    radial-gradient(circle at 20% 20%, rgba(14, 165, 233, 0.12), transparent 40%);
+  box-shadow:
+    0 12px 36px rgba(2, 8, 23, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.dark .VPHero {
+  background:
+    linear-gradient(145deg, rgba(15, 23, 42, 0.88), rgba(15, 23, 42, 0.72)),
+    radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.14), transparent 40%);
+  box-shadow:
+    0 16px 40px rgba(2, 8, 23, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.VPHero .text {
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  font-weight: 600;
+}
+
+.VPHero .tagline {
+  max-width: 50ch;
+  font-size: 1.03rem;
+}
+
+.VPFeature {
+  border: 1px solid color-mix(in srgb, var(--vp-c-brand-2) 24%, transparent);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(236, 253, 245, 0.78));
+}
+
+.dark .VPFeature {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(15, 23, 42, 0.72));
+}
+
+.vp-doc code,
+.vp-doc pre code {
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.vp-doc a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .VPHero {
+    border-radius: 20px;
+    padding: 1rem;
+  }
 }

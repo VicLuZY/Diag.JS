@@ -35,6 +35,7 @@ export default tseslint.config(
           './packages/*/tsconfig.json',
           './packages/*/tsconfig.eslint.json',
           './packages/mermaid/src/docs/tsconfig.json',
+          './packages/mermaid/src/vitepress/tsconfig.json',
         ],
         tsconfigRootDir: import.meta.dirname,
       },

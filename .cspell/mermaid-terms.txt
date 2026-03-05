@@ -43,3 +43,15 @@ visio
 vitepress
 xlink
 xychart
+AIRH
+ATSW
+BRKR
+CABL
+CDPN
+EMTC
+emer
+GENR
+LGHT
+PANL
+SWGR
+UTIL

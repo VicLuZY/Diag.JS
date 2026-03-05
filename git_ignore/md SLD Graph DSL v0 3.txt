@@ -1,0 +1,684 @@
+````md
+# SLD-Graph DSL v0.3
+## Mermaid-style Single Line Diagram (SLD) syntax with **4-character device type codes** and **TypeScript-defined equipment types**
+
+**Status:** Draft (living spec)
+
+This specification defines a Mermaid-like text language for building electrical distribution one-lines with the following hard constraints:
+
+- **All non-bus equipment is single-point input and/or output** (max one `in`, max one `out`).
+- **Only bus nodes are multi-point manifolds** (branching is only legal on busses).
+- **“Multi-port” packages (ATS, UPS, switchgear lineups, bypass arrangements) are modeled as assemblies** that expand into **bus + single-point devices**.
+
+---
+
+## 1. Quick example
+
+```text
+graph LR
+
+UTIL1[Utility]{v="480V"} --> BRKR1[Main Breaker] --> SWGR1[Switchgear]{v="480V"}
+
+SWGR1 --> BRKR2 --> CABX1{size="500kcmil", len="30m"} --> TRFM1{v_in="480V", v_out="208/120V", kva=300}
+TRFM1 --> PNLB1[Panel L1]{v="208/120V"}
+
+PNLB1 --> BRKR3 --> CABX2 --> LGHT1[Lighting]
+PNLB1 --> BRKR4 --> CABX3 --> RCPT1[Receptacles]
+````
+
+* `SWGR1` and `PNLB1` are **bus-class** manifolds.
+* `BRKR*`, `CABX*`, `TRFM1` are **single-point inline** devices.
+* Loads (`LGHT1`, `RCPT1`) are input-only.
+
+---
+
+## 2. Core modeling rules (normative)
+
+### 2.1 Single-point rule (equipment)
+
+All **non-bus** device nodes MUST satisfy:
+
+* `in_degree ≤ 1` (power connections)
+* `out_degree ≤ 1` (power connections)
+
+### 2.2 Bus exception (manifolds)
+
+Only **bus-class** nodes MAY have multi-point attachments. A bus node may have:
+
+* multiple incoming connections
+* multiple outgoing connections
+
+All branching MUST occur on busses.
+
+### 2.3 Assemblies are compositions
+
+Any real-world package that appears multi-port (example: ATS) MUST be represented as an **assembly** that expands into:
+
+* one or more **bus** nodes (manifolds)
+* multiple **inline single-point** devices (breakers, disconnects, switches)
+* optional alternate paths using `-.->` and metadata such as `state="NO"`
+
+---
+
+## 3. Syntax reference
+
+### 3.1 Header
+
+```text
+graph LR
+```
+
+Direction codes: `LR | RL | TD | BU`
+
+### 3.2 Comments
+
+```text
+%% comment until end of line
+```
+
+### 3.3 Node declaration
+
+```text
+TTTT_SUFFIX[Label]{ key=value, ... }
+```
+
+* `TTTT` is a **4-letter uppercase** device code.
+* `_SUFFIX` is any identifier tail to ensure uniqueness.
+* Label and metadata are optional.
+
+Example:
+
+```text
+TRFM1[Service Transformer]{ kva=1500, v_in="12.47kV", v_out="480V" }
+```
+
+### 3.4 Endpoints and ports
+
+Ports are referenced with `:port`:
+
+```text
+ATSS1:norm --> ...
+ATSS1:load --> ...
+```
+
+Ports are optional in authoring, but strongly recommended for assemblies and transformers.
+
+### 3.5 Edge operators
+
+| Operator | Meaning (recommended)                               |
+| -------- | --------------------------------------------------- |
+| `-->`    | normal energized path                               |
+| `==>`    | trunk or high-capacity path                         |
+| `-.->`   | alternate / normally-open path                      |
+| `<-->`   | bidirectional tie (recommended only between busses) |
+| `---`    | undirected association (avoid for power flow)       |
+
+### 3.6 Edge labels
+
+```text
+SWGR1 -->|Feeder F-12| PNLB2
+```
+
+### 3.7 Edge metadata
+
+```text
+SWGR1 --> PNLB2 { state="NC", prot="CB", ph="3PH", v="480V" }
+```
+
+---
+
+## 4. Formal grammar (EBNF)
+
+```ebnf
+diagram        ::= "graph" direction { statement }
+direction      ::= "LR" | "RL" | "TD" | "BU"
+
+statement      ::= node_decl | edge_stmt | subgraph_decl | comment
+comment        ::= "%%" <until EOL>
+
+node_decl      ::= node_id [ node_label ] [ metadata ]
+
+edge_stmt      ::= path [ metadata ]
+path           ::= endpoint { edge_op [ edge_label ] endpoint }
+
+endpoint       ::= node_ref
+node_ref       ::= node_id [ ":" port_name ]
+
+node_label     ::= "[" text "]"
+edge_label     ::= "|" text "|"
+
+metadata       ::= "{" pair { "," pair } "}"
+pair           ::= key "=" value
+key            ::= /[A-Za-z_][A-Za-z0-9_]*/
+value          ::= number | quoted_string
+number         ::= /[0-9]+(\.[0-9]+)?/
+quoted_string  ::= "\"" { any char except "\"" } "\""
+
+edge_op        ::= "-->" | "-.->" | "==>" | "<-->" | "---"
+
+subgraph_decl  ::= "subgraph" text { statement } "end"
+text           ::= <any text excluding linebreak>
+```
+
+Chained paths are allowed:
+
+```text
+BUSS1 --> BRKR1 --> CABX1 --> LOAD1
+```
+
+---
+
+## 5. TypeScript type system (normative)
+
+The **equipment types** and **device codes** MUST be defined as TypeScript types and derived from a catalog.
+
+### 5.1 Core TS types
+
+```ts
+// sld-types.ts
+
+export type Direction = 'LR' | 'RL' | 'TD' | 'BU';
+
+export type EdgeOp = '-->' | '-.->' | '==>' | '<-->' | '---';
+
+export type DeviceCategory = 'SRC' | 'BUS' | 'INL' | 'LOD' | 'ASM';
+
+export type PortDir = 'in' | 'out' | 'io'; // io for bus/manifold ports
+
+export type PortDef = {
+  dir: PortDir;
+  kind?: 'power' | 'control';
+  note?: string;
+};
+
+export type MetaValue = string | number | boolean;
+export type Metadata = Record<string, MetaValue>;
+
+export type NodeId<C extends DeviceCode = DeviceCode> = `${C}${string}`; // e.g., "TRFM1", "SWGR_A"
+
+export type Endpoint<C extends DeviceCode = DeviceCode> = {
+  id: NodeId<C>;
+  port?: string; // validated against catalog at runtime
+};
+
+export type Edge = {
+  from: Endpoint;
+  op: EdgeOp;
+  label?: string;
+  to: Endpoint;
+  meta?: Metadata; // edge metadata
+};
+
+export type Node<C extends DeviceCode = DeviceCode> = {
+  id: NodeId<C>;
+  code: C;           // first 4 characters of id, validated
+  label?: string;
+  meta?: Metadata;
+};
+
+export type Statement =
+  | { kind: 'node'; node: Node }
+  | { kind: 'edge'; edge: Edge }
+  | { kind: 'comment'; text: string }
+  | { kind: 'subgraph'; title: string; statements: Statement[] };
+
+export type Diagram = {
+  direction: Direction;
+  statements: Statement[];
+};
+```
+
+### 5.2 Device catalog as code, types inferred from data (recommended)
+
+This pattern makes the device list a single source of truth and keeps types in sync.
+
+```ts
+// device-catalog.ts
+
+export type DeviceDef = {
+  category: 'SRC' | 'BUS' | 'INL' | 'LOD' | 'ASM';
+  name: string;
+  ports: Record<string, { dir: 'in' | 'out' | 'io'; kind?: 'power' | 'control'; note?: string }>;
+  notes?: string;
+};
+
+export const DEVICE_CATALOG = {
+  // -------- Sources (SRC) --------
+  UTIL: { category: 'SRC', name: 'Utility Service Source', ports: { out: { dir: 'out', kind: 'power' } } },
+  GENS: { category: 'SRC', name: 'Generator Set Source', ports: { out: { dir: 'out', kind: 'power' } } },
+  PVIN: { category: 'SRC', name: 'PV Inverter AC Source', ports: { out: { dir: 'out', kind: 'power' } } },
+  BESS: { category: 'SRC', name: 'Battery Inverter AC Source', ports: { out: { dir: 'out', kind: 'power' } } },
+  TURB: { category: 'SRC', name: 'Turbine Generator Source', ports: { out: { dir: 'out', kind: 'power' } } },
+
+  // -------- Bus-class manifolds (BUS) --------
+  BUSS: { category: 'BUS', name: 'Generic Bus Manifold', ports: { bus: { dir: 'io', kind: 'power' } } },
+  SWGR: { category: 'BUS', name: 'Low Voltage Switchgear Bus Section', ports: { bus: { dir: 'io', kind: 'power' } } },
+  SWBD: { category: 'BUS', name: 'Switchboard Bus Section', ports: { bus: { dir: 'io', kind: 'power' } } },
+  PNLB: { category: 'BUS', name: 'Panelboard Bus Section', ports: { bus: { dir: 'io', kind: 'power' } } },
+  MCCB: { category: 'BUS', name: 'Motor Control Center Bus Section', ports: { bus: { dir: 'io', kind: 'power' } } },
+  PDUB: { category: 'BUS', name: 'Power Distribution Unit Bus', ports: { bus: { dir: 'io', kind: 'power' } } },
+  RPPB: { category: 'BUS', name: 'Remote Power Panel Bus', ports: { bus: { dir: 'io', kind: 'power' } } },
+  BUSW: { category: 'BUS', name: 'Busway / Bus Duct Trunk Manifold', ports: { bus: { dir: 'io', kind: 'power' } } },
+  TAPB: { category: 'BUS', name: 'Busway Tap Box Manifold', ports: { bus: { dir: 'io', kind: 'power' } } },
+  PARB: { category: 'BUS', name: 'Paralleling Bus Manifold', ports: { bus: { dir: 'io', kind: 'power' } } },
+
+  // Medium voltage (optional in buildings)
+  MVBS: { category: 'BUS', name: 'Medium Voltage Bus Manifold', ports: { bus: { dir: 'io', kind: 'power' } } },
+  MVSW: { category: 'BUS', name: 'Medium Voltage Switchgear Bus Section', ports: { bus: { dir: 'io', kind: 'power' } } },
+  RMUB: { category: 'BUS', name: 'Ring Main Unit Bus Manifold', ports: { bus: { dir: 'io', kind: 'power' } } },
+
+  // -------- Inline single-point devices (INL) --------
+  BRKR: { category: 'INL', name: 'Circuit Breaker (Generic)', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  ACBR: { category: 'INL', name: 'Air Circuit Breaker (LV)', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  VCBR: { category: 'INL', name: 'Vacuum Circuit Breaker (MV)', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  LBSW: { category: 'INL', name: 'Load Break Switch (MV)', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+
+  DISC: { category: 'INL', name: 'Disconnect Switch (Non-fused)', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  FUSD: { category: 'INL', name: 'Fused Disconnect / Fused Switch', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  SWCH: { category: 'INL', name: 'Switch (Non-protective)', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  CONT: { category: 'INL', name: 'Power Contactor', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+
+  // Conversion / conditioning
+  TRFM: { category: 'INL', name: 'Transformer (2-winding)', ports: { in: { dir: 'in', kind: 'power', note: 'primary' }, out: { dir: 'out', kind: 'power', note: 'secondary' } } },
+  AUTO: { category: 'INL', name: 'Autotransformer', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  RECT: { category: 'INL', name: 'Rectifier', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  INVT: { category: 'INL', name: 'Inverter', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  CHRG: { category: 'INL', name: 'Battery Charger', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+
+  VFDR: { category: 'INL', name: 'Variable Frequency Drive', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  SOFT: { category: 'INL', name: 'Soft Starter', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  REAC: { category: 'INL', name: 'Reactor (Line/Load)', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  HFLT: { category: 'INL', name: 'Harmonic Filter (Series)', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+
+  // Metering (series)
+  METR: { category: 'INL', name: 'Meter (Series)', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  ENRG: { category: 'INL', name: 'Energy Meter (Series)', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  PQMT: { category: 'INL', name: 'Power Quality Meter (Series)', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+
+  // Instrumentation blocks (often shown, not always in power path)
+  CTXF: { category: 'INL', name: 'Current Transformer Set (Inline representation)', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  VTXF: { category: 'INL', name: 'Voltage Transformer Set (Inline representation)', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+
+  // Media as devices (inline)
+  CABX: { category: 'INL', name: 'Cable Segment', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  COND: { category: 'INL', name: 'Conduit Segment', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  TRAY: { category: 'INL', name: 'Cable Tray Segment', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  DUCT: { category: 'INL', name: 'Duct Bank Segment', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  WIRE: { category: 'INL', name: 'Wiring Segment', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+  JBOX: { category: 'INL', name: 'Junction / Transition Box', ports: { in: { dir: 'in', kind: 'power' }, out: { dir: 'out', kind: 'power' } } },
+
+  // -------- Loads (LOD) --------
+  LOAD: { category: 'LOD', name: 'Generic Load', ports: { in: { dir: 'in', kind: 'power' } } },
+  LGHT: { category: 'LOD', name: 'Lighting Load Group', ports: { in: { dir: 'in', kind: 'power' } } },
+  RCPT: { category: 'LOD', name: 'Receptacle Load Group', ports: { in: { dir: 'in', kind: 'power' } } },
+  MOTR: { category: 'LOD', name: 'Motor Load', ports: { in: { dir: 'in', kind: 'power' } } },
+  EVCH: { category: 'LOD', name: 'EV Charger', ports: { in: { dir: 'in', kind: 'power' } } },
+
+  AHUX: { category: 'LOD', name: 'Air Handling Unit', ports: { in: { dir: 'in', kind: 'power' } } },
+  RTUX: { category: 'LOD', name: 'Rooftop Unit', ports: { in: { dir: 'in', kind: 'power' } } },
+  CHLR: { category: 'LOD', name: 'Chiller', ports: { in: { dir: 'in', kind: 'power' } } },
+  PUMP: { category: 'LOD', name: 'Pump', ports: { in: { dir: 'in', kind: 'power' } } },
+  FANX: { category: 'LOD', name: 'Fan', ports: { in: { dir: 'in', kind: 'power' } } },
+
+  FPMP: { category: 'LOD', name: 'Fire Pump', ports: { in: { dir: 'in', kind: 'power' } } },
+  ELEV: { category: 'LOD', name: 'Elevator Group', ports: { in: { dir: 'in', kind: 'power' } } },
+  ESCL: { category: 'LOD', name: 'Escalator Group', ports: { in: { dir: 'in', kind: 'power' } } },
+
+  ITLD: { category: 'LOD', name: 'IT Load Group', ports: { in: { dir: 'in', kind: 'power' } } },
+  TENL: { category: 'LOD', name: 'Tenant Load Group', ports: { in: { dir: 'in', kind: 'power' } } },
+
+  // Shunt devices modeled as loads fed from a bus via protection
+  SPDV: { category: 'LOD', name: 'Surge Protective Device (Shunt)', ports: { in: { dir: 'in', kind: 'power' } } },
+  CAPB: { category: 'LOD', name: 'Capacitor Bank (Shunt)', ports: { in: { dir: 'in', kind: 'power' } } },
+  SVGV: { category: 'LOD', name: 'Static VAR Generator (Shunt)', ports: { in: { dir: 'in', kind: 'power' } } },
+  SVCV: { category: 'LOD', name: 'Static VAR Compensator (Shunt)', ports: { in: { dir: 'in', kind: 'power' } } },
+
+  // -------- Assemblies (ASM) --------
+  ATSS: {
+    category: 'ASM',
+    name: 'Automatic Transfer Switch System (Assembly)',
+    ports: {
+      norm: { dir: 'in', kind: 'power', note: 'normal source in' },
+      emer: { dir: 'in', kind: 'power', note: 'backup source in' },
+      load: { dir: 'out', kind: 'power', note: 'to load bus / lineup' }
+    },
+    notes: 'Expands into input breakers + common bus + optional bypass and output breaker.'
+  },
+
+  STSS: {
+    category: 'ASM',
+    name: 'Static Transfer Switch System (Assembly)',
+    ports: {
+      srcA: { dir: 'in', kind: 'power' },
+      srcB: { dir: 'in', kind: 'power' },
+      load: { dir: 'out', kind: 'power' }
+    }
+  },
+
+  UPSS: {
+    category: 'ASM',
+    name: 'UPS System (Assembly)',
+    ports: {
+      in: { dir: 'in', kind: 'power' },
+      out: { dir: 'out', kind: 'power' }
+    },
+    notes: 'May expand into rectifier + inverter + bypass path + internal busses.'
+  }
+} as const satisfies Record<string, DeviceDef>;
+
+export type DeviceCode = keyof typeof DEVICE_CATALOG;
+
+export type DeviceDefFor<C extends DeviceCode> = (typeof DEVICE_CATALOG)[C];
+
+export type PortName<C extends DeviceCode> = keyof DeviceDefFor<C>['ports'];
+
+export type CategoryOf<C extends DeviceCode> = DeviceDefFor<C>['category'];
+
+export const isBusCode = (code: DeviceCode) => DEVICE_CATALOG[code].category === 'BUS';
+export const isAssemblyCode = (code: DeviceCode) => DEVICE_CATALOG[code].category === 'ASM';
+```
+
+### 5.3 Node ID parsing rule (normative)
+
+A conforming parser MUST:
+
+* extract `code = id.slice(0,4)`
+* validate `code` exists in `DEVICE_CATALOG`
+* classify node category using `DEVICE_CATALOG[code].category`
+
+---
+
+## 6. Assemblies (normative): ATS modeled as bus + single-point devices
+
+### 6.1 Assembly intent
+
+Even though `ATSS` exposes three public ports (`norm`, `emer`, `load`), **it is not a multi-point exception**. It is shorthand for an internal topology made of:
+
+* **two input breakers** (single-point inline)
+* **a common bus** (multi-point manifold)
+* optional **bypass breaker(s)**
+* optional **output breaker**
+
+### 6.2 ATSS configuration keys (recommended)
+
+On the `ATSS` node metadata:
+
+* `profile`: `"basic" | "bypass" | "bypass_iso"`
+* `out_breaker`: `true | false`
+* `bypass_norm`: `true | false`
+* `bypass_emer`: `true | false`
+
+### 6.3 Deterministic expansion IDs (recommended)
+
+For `ATSS1`, the expansion SHOULD generate:
+
+* `BRKR_ATSS1_NORM`  (normal input breaker)
+* `BRKR_ATSS1_EMER`  (emergency input breaker)
+* `BUSS_ATSS1_COM`   (common bus)
+* `BRKR_ATSS1_OUT`   (optional output breaker)
+* `BRKR_ATSS1_BPN`   (optional normal bypass breaker)
+* `BRKR_ATSS1_BPE`   (optional emergency bypass breaker)
+
+### 6.4 ATSS expansion template (TypeScript)
+
+```ts
+export type AtssProfile = 'basic' | 'bypass' | 'bypass_iso';
+
+export type AtssConfig = {
+  profile?: AtssProfile;
+  out_breaker?: boolean;
+  bypass_norm?: boolean;
+  bypass_emer?: boolean;
+};
+
+export type ExpandedGraph = {
+  nodes: Node[];
+  edges: Edge[];
+  portMap: Record<string, Endpoint>; // maps "ATSS1:norm" -> endpoint in expanded graph
+};
+
+export function expandATSS(atss: Node<'ATSS'>): ExpandedGraph {
+  // Implementation detail is up to your engine.
+  // Normative constraints:
+  // - Create BUSS_<id>_COM
+  // - Create BRKR_<id>_NORM and BRKR_<id>_EMER
+  // - Connect both breakers to common bus
+  // - If out_breaker, insert BRKR_<id>_OUT between common bus and ATSS:load mapping
+  // - If bypass breakers enabled, create normally-open alternate paths into common bus
+  throw new Error('not implemented');
+}
+```
+
+### 6.5 Author-facing ATSS usage
+
+```text
+graph LR
+UTIL1 --> ATSS1:norm
+GENS1 --> ATSS1:emer
+ATSS1:load ==> SWGR1
+```
+
+A renderer may show:
+
+* **collapsed view** (single ATS symbol), or
+* **expanded view** (breakers + common bus), or
+* toggle between the two.
+
+---
+
+## 7. Extensive device list (catalog view)
+
+The authoritative list is `DEVICE_CATALOG`. For readability, here is the same catalog organized by category.
+
+### 7.1 Sources (SRC)
+
+* `UTIL` Utility service source
+* `GENS` Generator set source
+* `PVIN` PV inverter AC source
+* `BESS` Battery inverter AC source
+* `TURB` Turbine generator source
+
+### 7.2 Bus manifolds (BUS)
+
+Core distribution:
+
+* `BUSS` Generic bus
+* `SWGR` LV switchgear bus section
+* `SWBD` Switchboard bus section
+* `PNLB` Panelboard bus section
+* `MCCB` MCC bus section
+
+Data center:
+
+* `PDUB` PDU bus
+* `RPPB` RPP bus
+
+Busway:
+
+* `BUSW` Busway trunk manifold
+* `TAPB` Busway tap box manifold
+
+Paralleling / plant:
+
+* `PARB` Paralleling bus manifold
+
+Medium voltage (optional):
+
+* `MVBS` MV bus manifold
+* `MVSW` MV switchgear bus section
+* `RMUB` Ring main bus manifold
+
+### 7.3 Inline devices (INL)
+
+Switching/protection:
+
+* `BRKR` Circuit breaker (generic)
+* `ACBR` Air circuit breaker (LV)
+* `VCBR` Vacuum circuit breaker (MV)
+* `LBSW` Load break switch (MV)
+* `DISC` Disconnect switch (non-fused)
+* `FUSD` Fused disconnect
+* `SWCH` Switch (non-protective)
+* `CONT` Power contactor
+
+Conversion/conditioning:
+
+* `TRFM` Transformer
+* `AUTO` Autotransformer
+* `RECT` Rectifier
+* `INVT` Inverter
+* `CHRG` Charger
+* `VFDR` VFD
+* `SOFT` Soft starter
+* `REAC` Reactor
+* `HFLT` Harmonic filter (series)
+
+Metering/instrumentation:
+
+* `METR` Meter (series)
+* `ENRG` Energy meter (series)
+* `PQMT` Power quality meter (series)
+* `CTXF` CT set (inline representation)
+* `VTXF` VT/PT set (inline representation)
+
+Media (inline):
+
+* `CABX` Cable segment
+* `COND` Conduit segment
+* `TRAY` Tray segment
+* `DUCT` Duct bank segment
+* `WIRE` Wiring segment
+* `JBOX` Junction/transition
+
+### 7.4 Loads (LOD)
+
+General:
+
+* `LOAD` Generic load
+* `TENL` Tenant load group
+* `ITLD` IT load group
+
+Lighting/receptacles:
+
+* `LGHT` Lighting load group
+* `RCPT` Receptacle load group
+
+Mechanical:
+
+* `MOTR` Motor load
+* `EVCH` EV charger
+* `AHUX` AHU
+* `RTUX` RTU
+* `CHLR` Chiller
+* `PUMP` Pump
+* `FANX` Fan
+
+Life safety / vertical transport:
+
+* `FPMP` Fire pump
+* `ELEV` Elevators
+* `ESCL` Escalators
+
+Shunt power quality devices (modeled as loads):
+
+* `SPDV` SPD (shunt)
+* `CAPB` Capacitor bank
+* `SVGV` Static VAR generator
+* `SVCV` Static VAR compensator
+
+### 7.5 Assemblies (ASM)
+
+* `ATSS` ATS system assembly (expands to breakers + common bus + options)
+* `STSS` Static transfer system assembly
+* `UPSS` UPS system assembly
+
+---
+
+## 8. Conformance checks (recommended validator behavior)
+
+A validator SHOULD run after assembly expansion and enforce:
+
+1. **Degree constraints**
+
+* Non-bus nodes: `in_degree ≤ 1` and `out_degree ≤ 1`
+* Loads: no outgoing
+* Sources: no incoming
+
+2. **Branching only on bus**
+
+* Any node with `in_degree > 1` or `out_degree > 1` must be bus-class (`category === 'BUS'`)
+
+3. **Assembly correctness**
+
+* `ATSS` must expand into at least:
+
+  * `BRKR_<id>_NORM`, `BRKR_<id>_EMER`, `BUSS_<id>_COM`
+* Optional components match configuration flags
+
+4. **Voltage consistency (if modeled)**
+
+* If `v` metadata exists on both sides, direct connections should match unless a transformer (`TRFM`/`AUTO`) exists in the path.
+
+5. **No unintended paralleling**
+
+* Two independent sources must not simultaneously feed the same bus without an explicit interlock model (expressed by metadata and normally-open states).
+
+---
+
+## 9. Recommended modeling patterns
+
+### 9.1 Panels are busses
+
+Model a panelboard as `PNLB` (bus manifold) plus branch breakers and feeder media.
+
+### 9.2 Switchgear lineups are busses
+
+Model gear sections as `SWGR`/`SWBD` bus manifolds plus main/tie/feeder breakers as `BRKR`.
+
+### 9.3 Anything “multi-load” is a bus
+
+If something has multiple outgoing circuits, it MUST be a bus node (or an assembly that expands to a bus).
+
+---
+
+## 10. Canonical ATSS example (author view + expanded intent)
+
+Author view:
+
+```text
+graph LR
+UTIL1 --> ATSS1:norm
+GENS1 --> ATSS1:emer
+ATSS1:load ==> SWGR1
+```
+
+Expanded intent (conceptual):
+
+```text
+UTIL1 --> BRKR_ATSS1_NORM --> BUSS_ATSS1_COM --> BRKR_ATSS1_OUT --> SWGR1
+GENS1 --> BRKR_ATSS1_EMER --> BUSS_ATSS1_COM
+UTIL1 --> BRKR_ATSS1_BPN -.-> BUSS_ATSS1_COM     { state="NO" }
+```
+
+---
+
+## 11. Extensibility (required)
+
+When adding a new equipment type:
+
+1. Add a new 4-letter code to `DEVICE_CATALOG`
+2. Choose exactly one category: `SRC | BUS | INL | LOD | ASM`
+3. Define its ports (even if only `in/out` or `bus`)
+4. If `ASM`, define an expansion template that produces only:
+
+   * bus nodes (`BUS`)
+   * single-point inline nodes (`INL`)
+   * loads (`LOD`) if needed
+
+Unknown types may be rendered generically, but MUST be rejected by a conforming parser unless added to `DEVICE_CATALOG`.
+
+---
+
+```
+```
+
