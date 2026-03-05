@@ -10,6 +10,7 @@ import quadrantChart from '../diagrams/quadrant-chart/quadrantDetector.js';
 import xychart from '../diagrams/xychart/xychartDetector.js';
 import requirement from '../diagrams/requirement/requirementDetector.js';
 import sequence from '../diagrams/sequence/sequenceDetector.js';
+import { sld } from '../diagrams/sld/detector.js';
 import classDiagram from '../diagrams/class/classDetector.js';
 import classDiagramV2 from '../diagrams/class/classDetector-V2.js';
 import state from '../diagrams/state/stateDetector.js';
@@ -90,6 +91,7 @@ export const addDiagrams = () => {
     pie,
     requirement,
     sequence,
+    sld,
     flowchartV2,
     flowchart,
     timeline,
