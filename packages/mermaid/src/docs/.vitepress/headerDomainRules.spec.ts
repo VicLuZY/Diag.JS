@@ -20,6 +20,13 @@ describe('headerDomainRules', () => {
       ]);
     });
 
+    it('removes Home nav item on GitHub Pages', () => {
+      const nav = [HOME_NAV_ITEM, { text: 'Docs', link: '/intro/', activeMatch: '/intro/' }];
+      expect(withConditionalHomeNav(nav, 'owner.github.io')).toEqual([
+        { text: 'Docs', link: '/intro/', activeMatch: '/intro/' },
+      ]);
+    });
+
     it('does not duplicate Home nav item', () => {
       const nav = [HOME_NAV_ITEM, { text: 'Docs', link: '/intro/', activeMatch: '/intro/' }];
       expect(withConditionalHomeNav(nav, 'mermaid.ai')).toEqual(nav);
@@ -29,6 +36,10 @@ describe('headerDomainRules', () => {
   describe('getHeaderLogo', () => {
     it('returns local favicon for mermaid.js.org', () => {
       expect(getHeaderLogo('mermaid.js.org')).toBe('/favicon.svg');
+    });
+
+    it('returns local favicon for GitHub Pages', () => {
+      expect(getHeaderLogo('owner.github.io')).toBe('/favicon.svg');
     });
 
     it('returns mermaid chart logo for other domains', () => {
@@ -41,6 +52,10 @@ describe('headerDomainRules', () => {
   describe('getHeaderLogoLink', () => {
     it('returns / for mermaid.js.org', () => {
       expect(getHeaderLogoLink('mermaid.js.org')).toBe('/');
+    });
+
+    it('returns / for GitHub Pages', () => {
+      expect(getHeaderLogoLink('owner.github.io')).toBe('/');
     });
 
     it('returns https://mermaid.ai for other domains', () => {

@@ -1,26 +1,28 @@
-name: Deploy Vitepress docs to Pages
+name: Deploy docs to GitHub Pages
 
 on:
-  # Runs on pushes targeting the default branch
   push:
     branches:
-      - master
+      - develop
+  workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow one concurrent deployment
 concurrency:
   group: 'pages'
   cancel-in-progress: true
 
 jobs:
-  # Build job
   build-docs:
     runs-on: ubuntu-latest
+    env:
+      DOCS_BASE: /${{ github.event.repository.name }}/
+      DOCS_SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+      DOCS_CANONICAL_BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -33,24 +35,30 @@ jobs:
           cache: pnpm
           node-version-file: '.node-version'
 
-      - name: Install Packages
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Setup Pages
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
 
-      - name: Run Build
+      - name: Build VitePress docs
         run: pnpm --filter mermaid run docs:build:vitepress
 
-      - name: Upload artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:
           path: packages/mermaid/src/vitepress/.vitepress/dist
 
-  # Deployment job
+      - name: Build summary
+        run: |
+          echo "## Docs built for GitHub Pages" >> $GITHUB_STEP_SUMMARY
+          echo "Branch: ${{ github.ref_name }} | Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "Site: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" >> $GITHUB_STEP_SUMMARY
+
   deploy-docs:
     environment:
       name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build-docs
     steps:
