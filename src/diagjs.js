@@ -271,7 +271,7 @@ function renderCompiledSvg(compiled, options) {
 
   const edgeBlocks = layout.edges
     .map((edge) => {
-      const path = `M ${edge.fromX} ${edge.fromY} C ${edge.laneX} ${edge.fromY}, ${edge.laneX} ${edge.toY}, ${edge.toX} ${edge.toY}`;
+      const path = `M ${edge.fromX} ${edge.fromY} L ${edge.laneX} ${edge.fromY} L ${edge.laneX} ${edge.toY} L ${edge.toX} ${edge.toY}`;
       const label = edge.label
         ? `<text x="${edge.laneX + 6}" y="${(edge.fromY + edge.toY) / 2 - 6}" font-family="ui-sans-serif, system-ui" font-size="12" fill="#1e293b">${escapeXml(edge.label)}</text>`
         : '';
