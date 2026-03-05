@@ -1,7 +1,9 @@
 const NODE_ID_RE = '[A-Za-z][A-Za-z0-9_-]*';
-const TITLE_RE = new RegExp(`^title\\s+\"([^\"]+)\"$`);
-const NODE_RE = new RegExp(`^node\\s+(${NODE_ID_RE})\\s+\"([^\"]+)\"$`);
-const EDGE_RE = new RegExp(`^edge\\s+(${NODE_ID_RE})\\s+(${NODE_ID_RE})(?:\\s+\"([^\"]+)\")?$`);
+const TITLE_RE = new RegExp(`^title\\s+"([^"]+)"$`);
+const NODE_RE = new RegExp(`^node\\s+(${NODE_ID_RE})\\s+"([^"]+)"$`);
+const EDGE_RE = new RegExp(`^edge\\s+(${NODE_ID_RE})\\s+(${NODE_ID_RE})(?:\\s+"([^"]+)")?$`);
+// SLD equipment parameter: param NODE_ID KEY "value" or param NODE_ID KEY value
+const PARAM_RE = new RegExp(`^param\\s+(${NODE_ID_RE})\\s+([A-Za-z][A-Za-z0-9_-]*)\\s+(?:"([^"]*)"|(\\S+))$`);
 
 function syntaxError(lineNumber, line) {
   return new SyntaxError(`Invalid statement at line ${lineNumber}: ${line}`);
@@ -69,6 +71,19 @@ export function parseDiagram(source) {
       continue;
     }
 
+    const paramMatch = line.match(PARAM_RE);
+    if (paramMatch) {
+      const value = paramMatch[3] !== undefined ? paramMatch[3] : paramMatch[4];
+      ast.statements.push({
+        type: 'ParamDeclaration',
+        nodeId: paramMatch[1],
+        key: paramMatch[2],
+        value,
+        line: lineNumber,
+      });
+      continue;
+    }
+
     throw syntaxError(lineNumber, rawLine);
   }
 
@@ -92,7 +107,18 @@ export function compileDiagram(ast) {
       if (nodes.has(statement.id)) {
         throw new SyntaxError(`Duplicate node id "${statement.id}" at line ${statement.line}.`);
       }
-      nodes.set(statement.id, { id: statement.id, label: statement.label });
+      nodes.set(statement.id, { id: statement.id, label: statement.label, params: {} });
+      continue;
+    }
+
+    if (statement.type === 'ParamDeclaration') {
+      if (!nodes.has(statement.nodeId)) {
+        throw new SyntaxError(
+          `Unknown node "${statement.nodeId}" for param at line ${statement.line}.`
+        );
+      }
+      const node = nodes.get(statement.nodeId);
+      node.params[statement.key] = statement.value;
       continue;
     }
 
@@ -123,28 +149,57 @@ function layoutDiagram(compiled, options = {}) {
   const rowGap = options.rowGap ?? 84;
   const minNodeWidth = options.minNodeWidth ?? 104;
   const textScale = options.textScale ?? 8;
+  const paramScale = options.paramScale ?? 6.2;
+  const paramGap = options.paramGap ?? 12;
+  const paramLineHeight = options.paramLineHeight ?? 18;
+  const paramPadding = options.paramPadding ?? 10;
 
   const rowOffset = compiled.title ? 44 : 0;
   const nodeX = margin;
 
   const measured = compiled.nodes.map((node, index) => {
     const width = Math.max(minNodeWidth, node.label.length * textScale + 28);
+    const paramEntries = Object.entries(node.params ?? {});
+    const paramBlockWidth =
+      paramEntries.length === 0
+        ? 0
+        : Math.max(
+            ...paramEntries.map(([k, v]) => (k.length + String(v).length + 2) * paramScale),
+            60
+          ) + paramPadding * 2;
+    const paramBlockHeight =
+      paramEntries.length === 0 ? 0 : paramEntries.length * paramLineHeight + paramPadding * 2;
+    const blockHeight = Math.max(nodeHeight, paramBlockHeight);
     const y = margin + rowOffset + index * rowGap;
-    return { ...node, width, height: nodeHeight, x: nodeX, y };
+    return {
+      ...node,
+      width,
+      height: nodeHeight,
+      paramBlockWidth,
+      paramBlockHeight,
+      blockHeight,
+      x: nodeX,
+      y,
+    };
   });
 
-  const widest = measured.reduce((max, node) => Math.max(max, node.width), minNodeWidth);
-  const edgeLaneX = nodeX + widest + 96;
+  const widestNode = measured.reduce((max, node) => Math.max(max, node.width), minNodeWidth);
+  const widestRow = measured.reduce(
+    (max, node) => Math.max(max, node.width + paramGap + node.paramBlockWidth),
+    widestNode
+  );
+  const edgeLaneX = nodeX + widestRow + 96;
   const map = new Map(measured.map((node) => [node.id, node]));
 
   const drawnEdges = compiled.edges.map((edge, index) => {
     const from = map.get(edge.from);
     const to = map.get(edge.to);
+    const fromOutX = from.x + from.width + from.paramBlockWidth + paramGap;
     const laneX = edgeLaneX + (index % 3) * 26;
 
     return {
       ...edge,
-      fromX: from.x + from.width,
+      fromX: fromOutX,
       fromY: from.y + from.height / 2,
       toX: to.x,
       toY: to.y + to.height / 2,
@@ -154,13 +209,17 @@ function layoutDiagram(compiled, options = {}) {
 
   const width = edgeLaneX + 140;
   const lastNode = measured[measured.length - 1];
-  const height = lastNode ? lastNode.y + nodeHeight + margin : margin * 2;
+  const rowHeight = lastNode ? lastNode.blockHeight : nodeHeight;
+  const height = lastNode ? lastNode.y + rowHeight + margin : margin * 2;
 
   return {
     width,
     height,
     nodes: measured,
     edges: drawnEdges,
+    paramGap,
+    paramLineHeight,
+    paramPadding,
   };
 }
 
@@ -180,14 +239,34 @@ function renderCompiledSvg(compiled, options) {
     ? `<text x="${layout.width / 2}" y="${titleY}" text-anchor="middle" font-family="ui-sans-serif, system-ui" font-size="16" font-weight="700" fill="#0f172a">${escapeXml(compiled.title)}</text>`
     : '';
 
+  const { paramGap, paramLineHeight, paramPadding } = layout;
+
   const nodeBlocks = layout.nodes
-    .map(
-      (node) => `
+    .map((node) => {
+      const paramEntries = Object.entries(node.params ?? {});
+      const paramX = node.x + node.width + paramGap;
+      const paramY0 = node.y + paramPadding;
+      const paramLines =
+        paramEntries.length === 0
+          ? ''
+          : paramEntries
+              .map(
+                ([key, value], i) =>
+                  `<text x="${paramX + paramPadding}" y="${paramY0 + (i + 1) * paramLineHeight - 4}" font-family="ui-monospace, monospace" font-size="11" fill="#475569">${escapeXml(key)}: ${escapeXml(String(value))}</text>`
+              )
+              .join('');
+      const paramRect =
+        paramEntries.length === 0
+          ? ''
+          : `<rect x="${paramX}" y="${node.y}" width="${node.paramBlockWidth}" height="${node.paramBlockHeight}" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1"/>`;
+      return `
 <g data-id="${escapeXml(node.id)}">
   <rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="10" fill="#e2e8f0" stroke="#334155" stroke-width="1.5"/>
   <text x="${node.x + node.width / 2}" y="${node.y + node.height / 2 + 5}" text-anchor="middle" font-family="ui-sans-serif, system-ui" font-size="14" fill="#0f172a">${escapeXml(node.label)}</text>
-</g>`
-    )
+  ${paramRect}
+  ${paramLines}
+</g>`;
+    })
     .join('');
 
   const edgeBlocks = layout.edges

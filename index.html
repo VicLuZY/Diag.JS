@@ -3,43 +3,171 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Diag.JS</title>
+    <title>Diag.JS – SLD diagrams & equipment schematics</title>
     <style>
       :root {
         color-scheme: light dark;
+        --bg: #0f172a;
+        --surface: #1e293b;
+        --border: #334155;
+        --text: #f1f5f9;
+        --muted: #94a3b8;
+        --accent: #38bdf8;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
       }
 
       body {
         margin: 0;
         min-height: 100vh;
-        display: grid;
-        place-items: center;
-        background: #111827;
-        color: #f9fafb;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
       }
 
-      main {
+      .wrap {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem 4rem;
+      }
+
+      header {
         text-align: center;
-        padding: 2rem;
+        margin-bottom: 3rem;
       }
 
       h1 {
-        font-size: clamp(2rem, 6vw, 3rem);
+        font-size: clamp(1.75rem, 5vw, 2.5rem);
+        font-weight: 700;
         margin: 0 0 0.5rem;
+        letter-spacing: -0.02em;
       }
 
-      p {
-        font-size: clamp(1rem, 3vw, 1.25rem);
+      .tagline {
+        color: var(--muted);
+        font-size: clamp(0.95rem, 2.5vw, 1.1rem);
         margin: 0;
-        opacity: 0.9;
+      }
+
+      section {
+        margin-bottom: 2.5rem;
+      }
+
+      h2 {
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: var(--accent);
+        margin: 0 0 1rem;
+        letter-spacing: 0.02em;
+      }
+
+      .diagram-wrap {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        overflow: auto;
+        margin-bottom: 1rem;
+      }
+
+      .diagram-wrap svg {
+        display: block;
+        max-width: 100%;
+        height: auto;
+      }
+
+      .source-wrap {
+        background: #0c1222;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        overflow-x: auto;
+      }
+
+      .source-wrap pre {
+        margin: 0;
+        font-family: ui-monospace, "Cascadia Code", "Source Code Pro", monospace;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      .source-wrap pre .comment { color: #64748b; }
+      .source-wrap pre .keyword { color: #a78bfa; }
+      .source-wrap pre .string { color: #86efac; }
+      .source-wrap pre .id { color: var(--accent); }
+
+      footer {
+        text-align: center;
+        padding-top: 2rem;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 0.875rem;
+      }
+
+      footer a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      footer a:hover {
+        text-decoration: underline;
       }
     </style>
   </head>
   <body>
-    <main>
-      <h1>Diag.JS</h1>
-      <p>This homepage is under development.</p>
-    </main>
+    <div class="wrap">
+      <header>
+        <h1>Diag.JS</h1>
+        <p class="tagline">Text-to-SVG diagrams with SLD equipment parameters</p>
+      </header>
+
+      <section>
+        <h2>Equipment schematic (SLD)</h2>
+        <p style="color: var(--muted); font-size: 0.95rem; margin-bottom: 1rem;">
+          Devices and connections with parameters rendered next to each node. Scalable for future equipment definitions.
+        </p>
+        <div class="diagram-wrap" id="diagram" aria-label="Rendered SLD diagram"></div>
+        <div class="source-wrap">
+          <pre id="source"><code></code></pre>
+        </div>
+      </section>
+
+      <footer>
+        <a href="https://github.com/VicLuZY/Diag.JS">GitHub</a> · MIT
+      </footer>
+    </div>
+
+    <script type="module">
+      import { renderSvg } from './src/index.js';
+
+      const sldExample = `title "Cooling loop"
+node P1 "Primary pump"
+param P1 power 5.5kW
+param P1 head 12m
+param P1 rpm 2900
+node HX "Heat exchanger"
+param HX type plate
+param HX duty 120kW
+node T1 "Buffer tank"
+param T1 volume 500L
+param T1 temp 45°C
+edge P1 HX "flow"
+edge HX T1 "return"
+edge T1 P1 "recirc"`;
+
+      const diagramEl = document.getElementById('diagram');
+      const sourceEl = document.querySelector('#source code');
+      sourceEl.textContent = sldExample;
+
+      try {
+        diagramEl.innerHTML = renderSvg(sldExample);
+      } catch (e) {
+        diagramEl.innerHTML = `<p style="color:#f87171;">Render error: ${e.message}</p>`;
+      }
+    </script>
   </body>
 </html>
