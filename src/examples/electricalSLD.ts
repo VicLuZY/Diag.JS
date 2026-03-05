@@ -1,468 +1,1320 @@
-/**
- * Building Electrical Distribution System - Single Line Diagram (SLD)
- * From high-voltage service through transformers, panels, MCC, to end-use loads.
- */
 import Konva from "konva";
 import type { CoreCanvas } from "../diagJS/core/canvas";
 
-const CONNECTOR_COLOR = "#333";
+type LoadType = "motor" | "lighting" | "receptacle" | "equipment";
+type NodeKind = "service" | "transformer" | "switchboard" | "mcc" | "panel" | "load";
 
-function addHVService(parent: Konva.Layer, x: number, y: number) {
-  const g = new Konva.Group({ x, y });
-  // Outer circle (service entrance)
-  g.add(
-    new Konva.Circle({
-      radius: 28,
-      stroke: "#c00",
-      strokeWidth: 2,
-      fill: "#fff",
-    })
-  );
-  // Inner symbol (lightning / HV)
-  g.add(
-    new Konva.Line({
-      points: [0, -18, 8, 0, 0, 8, -8, 0, 0, -18],
-      stroke: "#c00",
-      strokeWidth: 1.5,
-      closed: true,
-      fill: "transparent",
-    })
-  );
-  g.add(
-    new Konva.Text({
-      y: 32,
-      width: 80,
-      text: "Utility\n13.8 kV",
-      fontSize: 10,
-      fontFamily: "Arial",
-      fill: "#333",
-      align: "center",
-      offsetX: 40,
-    })
-  );
-  parent.add(g);
-  return g;
+interface SLDNode {
+  kind: NodeKind;
+  label: string;
+  voltage?: string;
+  subtitle?: string;
+  loadType?: LoadType;
+  children?: SLDNode[];
 }
 
-function addTransformer(
-  parent: Konva.Layer,
-  x: number,
-  y: number,
-  labelPrimary: string,
-  labelSecondary: string
-) {
-  const g = new Konva.Group({ x, y });
-  const r = 22;
-  g.add(
-    new Konva.Circle({
-      x: -r - 4,
-      y: 0,
-      radius: r,
-      stroke: CONNECTOR_COLOR,
-      strokeWidth: 1.5,
-      fill: "#fff",
-    })
+interface NodeMetrics {
+  width: number;
+  height: number;
+  topConnectorOffset: number;
+  bottomConnectorOffset: number;
+  accent: string;
+  fill: string;
+}
+
+interface LayoutNode {
+  data: SLDNode;
+  children: LayoutNode[];
+  metrics: NodeMetrics;
+  subtreeWidth: number;
+  subtreeHeight: number;
+  totalChildrenWidth: number;
+  childGapX: number;
+  childGapY: number;
+  x: number;
+  y: number;
+}
+
+interface SheetBounds {
+  width: number;
+  height: number;
+  workX: number;
+  workY: number;
+  workWidth: number;
+  workHeight: number;
+}
+
+export interface SLDStats {
+  distributionCount: number;
+  loadCount: number;
+  maxDepth: number;
+  totalNodes: number;
+  primaryFeederCount: number;
+  voltageCount: number;
+}
+
+const BODY_FONT = "Trebuchet MS";
+const TITLE_FONT = "Georgia";
+const OUTER_MARGIN = 36;
+const HEADER_HEIGHT = 112;
+const FOOTER_HEIGHT = 86;
+const WORK_PADDING_X = 72;
+const WORK_PADDING_Y = 48;
+const MIN_PAGE_WIDTH = 1480;
+const MIN_PAGE_HEIGHT = 1040;
+const FEEDER_GAP = 96;
+const SIBLING_GAP = 52;
+const LOAD_GAP = 34;
+const LOAD_VERTICAL_GAP = 78;
+
+const DRAFT = {
+  paper: "#fdfcf7",
+  paperStroke: "#5f6b73",
+  ink: "#1f2c39",
+  muted: "#667380",
+  line: "#2c3d4b",
+  bus: "#243748",
+  detail: "#95a2ad",
+  headerFill: "#eef2f4",
+  serviceFill: "#fff7f1",
+  transformerFill: "#fff9f1",
+  panelFill: "#f7fbfe",
+  mccFill: "#f4faf7",
+  equipmentFill: "#fbfcfd",
+  loadFill: "#fafbfc",
+  serviceAccent: "#8a4027",
+  transformerAccent: "#8a5b35",
+  switchboardAccent: "#274560",
+  panelAccent: "#416178",
+  mccAccent: "#2f6251",
+  motorAccent: "#2f6749",
+  lightingAccent: "#9e7c1d",
+  receptacleAccent: "#7a7366",
+  equipmentAccent: "#586776",
+} as const;
+
+export const extensiveSLDModel: SLDNode = {
+  kind: "service",
+  label: "UTILITY SERVICE",
+  subtitle: "Primary Service Entrance",
+  voltage: "13.8 kV, 3PH, 3W",
+  children: [
+    {
+      kind: "transformer",
+      label: "XFMR-1",
+      subtitle: "1500 kVA, Dry Type",
+      voltage: "13.8 kV / 480Y/277 V",
+      children: [
+        {
+          kind: "switchboard",
+          label: "MSB-1",
+          subtitle: "3000 A Main Distribution Switchboard",
+          voltage: "480 V, 3PH, 4W",
+          children: [
+            {
+              kind: "transformer",
+              label: "XFMR-LP",
+              subtitle: "300 kVA Step-Down Transformer",
+              voltage: "480 V / 208Y/120 V",
+              children: [
+                {
+                  kind: "panel",
+                  label: "LP-1",
+                  subtitle: "Lighting Panel, 225 A",
+                  voltage: "208Y/120 V",
+                  children: [
+                    { kind: "load", label: "General Lighting", subtitle: "West Wing", loadType: "lighting" },
+                    { kind: "load", label: "Corridor Lighting", subtitle: "Emergency Egress", loadType: "lighting" },
+                  ],
+                },
+                {
+                  kind: "panel",
+                  label: "LP-2",
+                  subtitle: "Lighting Panel, 225 A",
+                  voltage: "208Y/120 V",
+                  children: [
+                    { kind: "load", label: "Exterior Lighting", subtitle: "Site and Facade", loadType: "lighting" },
+                    { kind: "load", label: "Tenant Lighting", subtitle: "Fit-Out Reserve", loadType: "lighting" },
+                  ],
+                },
+                {
+                  kind: "panel",
+                  label: "RP-1",
+                  subtitle: "Receptacle Panel, 225 A",
+                  voltage: "208Y/120 V",
+                  children: [
+                    { kind: "load", label: "Convenience Power", subtitle: "General Receptacles", loadType: "receptacle" },
+                    { kind: "load", label: "IT and Office", subtitle: "Dedicated Branch Circuits", loadType: "receptacle" },
+                  ],
+                },
+              ],
+            },
+            {
+              kind: "mcc",
+              label: "MCC-1",
+              subtitle: "Mechanical Plant, 1200 A",
+              voltage: "480 V, 3PH",
+              children: [
+                { kind: "load", label: "Chiller No. 1", subtitle: "200 HP", loadType: "motor" },
+                { kind: "load", label: "CHW Pump", subtitle: "40 HP", loadType: "motor" },
+                { kind: "load", label: "AHU-1", subtitle: "25 HP", loadType: "motor" },
+                { kind: "load", label: "Exhaust Fan", subtitle: "10 HP", loadType: "motor" },
+              ],
+            },
+            {
+              kind: "mcc",
+              label: "MCC-2",
+              subtitle: "Basement Plant, 800 A",
+              voltage: "480 V, 3PH",
+              children: [
+                { kind: "load", label: "Boiler Plant", subtitle: "75 HP", loadType: "motor" },
+                { kind: "load", label: "CW Pump", subtitle: "30 HP", loadType: "motor" },
+                { kind: "load", label: "AHU-2", subtitle: "20 HP", loadType: "motor" },
+              ],
+            },
+            {
+              kind: "panel",
+              label: "DP-1",
+              subtitle: "Distribution Panel, 400 A",
+              voltage: "480 V, 3PH",
+              children: [
+                { kind: "load", label: "RTU-1", subtitle: "50 kVA", loadType: "equipment" },
+                { kind: "load", label: "Elevator", subtitle: "75 kVA", loadType: "equipment" },
+              ],
+            },
+            {
+              kind: "panel",
+              label: "DP-2",
+              subtitle: "Mechanical Panel, 250 A",
+              voltage: "480 V, 3PH",
+              children: [
+                { kind: "load", label: "Kitchen HVAC", subtitle: "35 kVA", loadType: "equipment" },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+export function summarizeSLDModel(model: SLDNode = extensiveSLDModel): SLDStats {
+  let distributionCount = 0;
+  let loadCount = 0;
+  let totalNodes = 0;
+  let maxDepth = 0;
+  const voltages = new Set<string>();
+
+  const visit = (node: SLDNode, depth: number) => {
+    totalNodes += 1;
+    maxDepth = Math.max(maxDepth, depth);
+
+    if (node.kind === "load") {
+      loadCount += 1;
+    } else {
+      distributionCount += 1;
+    }
+
+    if (node.voltage) {
+      voltages.add(node.voltage);
+    }
+
+    for (const child of node.children ?? []) {
+      visit(child, depth + 1);
+    }
+  };
+
+  visit(model, 1);
+
+  const primaryFeederCount =
+    model.children?.[0]?.children?.[0]?.children?.length ??
+    model.children?.[0]?.children?.length ??
+    model.children?.length ??
+    0;
+
+  return {
+    distributionCount,
+    loadCount,
+    maxDepth,
+    totalNodes,
+    primaryFeederCount,
+    voltageCount: voltages.size,
+  };
+}
+
+export function buildElectricalSLD(canvas: CoreCanvas, model: SLDNode = extensiveSLDModel): Konva.Layer {
+  const layout = buildLayout(model);
+  const sheet = createSheetBounds(layout);
+
+  assignPositions(
+    layout,
+    sheet.workX + Math.max(0, (sheet.workWidth - layout.subtreeWidth) / 2),
+    sheet.workY + Math.max(0, (sheet.workHeight - layout.subtreeHeight) / 2),
   );
-  g.add(
-    new Konva.Circle({
-      x: r + 4,
-      y: 0,
-      radius: r,
-      stroke: CONNECTOR_COLOR,
-      strokeWidth: 1.5,
-      fill: "#fff",
-    })
+
+  canvas.clearContentLayers();
+  canvas.setSceneSize(sheet.width, sheet.height);
+
+  if (canvas.grid) {
+    canvas.grid.isVisible = false;
+    canvas.grid.render();
+  }
+
+  const layer = new Konva.Layer({ listening: false });
+  canvas.stage.add(layer);
+
+  renderSheet(layer, sheet);
+  renderConnectors(layer, layout);
+  renderNodes(layer, layout);
+
+  layer.draw();
+  canvas.fitToScene(40, 1);
+
+  return layer;
+}
+
+function buildLayout(node: SLDNode): LayoutNode {
+  const children = (node.children ?? []).map(buildLayout);
+  const metrics = measureNode(node);
+  const childGapX = getChildGapX(node, children);
+  const childGapY = getChildGapY(node, children);
+  const totalChildrenWidth = children.length
+    ? children.reduce((sum, child) => sum + child.subtreeWidth, 0) + childGapX * (children.length - 1)
+    : 0;
+  const subtreeWidth = Math.max(metrics.width, totalChildrenWidth);
+  const subtreeHeight = children.length
+    ? metrics.height + childGapY + Math.max(...children.map((child) => child.subtreeHeight))
+    : metrics.height;
+
+  return {
+    data: node,
+    children,
+    metrics,
+    subtreeWidth,
+    subtreeHeight,
+    totalChildrenWidth,
+    childGapX,
+    childGapY,
+    x: 0,
+    y: 0,
+  };
+}
+
+function assignPositions(node: LayoutNode, left: number, top: number) {
+  node.x = left + (node.subtreeWidth - node.metrics.width) / 2;
+  node.y = top;
+
+  if (!node.children.length) {
+    return;
+  }
+
+  let cursor = left + (node.subtreeWidth - node.totalChildrenWidth) / 2;
+  const childTop = top + node.metrics.height + node.childGapY;
+
+  for (const child of node.children) {
+    assignPositions(child, cursor, childTop);
+    cursor += child.subtreeWidth + node.childGapX;
+  }
+}
+
+function createSheetBounds(layout: LayoutNode): SheetBounds {
+  const width = Math.max(
+    MIN_PAGE_WIDTH,
+    layout.subtreeWidth + WORK_PADDING_X * 2 + OUTER_MARGIN * 2,
   );
-  g.add(
-    new Konva.Line({
-      points: [-4, 0, 4, 0],
-      stroke: CONNECTOR_COLOR,
+  const height = Math.max(
+    MIN_PAGE_HEIGHT,
+    layout.subtreeHeight + WORK_PADDING_Y * 2 + HEADER_HEIGHT + FOOTER_HEIGHT + OUTER_MARGIN * 2,
+  );
+  const workX = OUTER_MARGIN + WORK_PADDING_X;
+  const workY = OUTER_MARGIN + HEADER_HEIGHT + WORK_PADDING_Y;
+  const workWidth = width - OUTER_MARGIN * 2 - WORK_PADDING_X * 2;
+  const workHeight = height - OUTER_MARGIN * 2 - HEADER_HEIGHT - FOOTER_HEIGHT - WORK_PADDING_Y * 2;
+
+  return { width, height, workX, workY, workWidth, workHeight };
+}
+
+function renderSheet(layer: Konva.Layer, sheet: SheetBounds) {
+  layer.add(
+    new Konva.Rect({
+      x: 18,
+      y: 18,
+      width: sheet.width - 36,
+      height: sheet.height - 36,
+      fill: DRAFT.paper,
+      stroke: DRAFT.paperStroke,
+      strokeWidth: 1.2,
+      cornerRadius: 20,
+      shadowColor: "#3e464d",
+      shadowBlur: 24,
+      shadowOffsetY: 16,
+      shadowOpacity: 0.16,
+    }),
+  );
+
+  layer.add(
+    new Konva.Rect({
+      x: OUTER_MARGIN,
+      y: OUTER_MARGIN,
+      width: sheet.width - OUTER_MARGIN * 2,
+      height: sheet.height - OUTER_MARGIN * 2,
+      stroke: DRAFT.paperStroke,
+      strokeWidth: 1.2,
+      cornerRadius: 10,
+      fillEnabled: false,
+    }),
+  );
+
+  const headerY = OUTER_MARGIN + 14;
+  const noteBoxWidth = 360;
+  const noteBoxHeight = HEADER_HEIGHT - 28;
+  const noteBoxX = sheet.width - OUTER_MARGIN - noteBoxWidth;
+  const footerTop = sheet.height - OUTER_MARGIN - FOOTER_HEIGHT;
+
+  layer.add(
+    new Konva.Rect({
+      x: noteBoxX,
+      y: headerY,
+      width: noteBoxWidth,
+      height: noteBoxHeight,
+      fill: DRAFT.headerFill,
+      stroke: DRAFT.detail,
       strokeWidth: 1,
-    })
+      cornerRadius: 10,
+    }),
   );
-  g.add(
-    new Konva.Text({
-      x: -r - 4,
-      y: r + 4,
-      width: 2 * r + 8,
-      text: labelPrimary,
-      fontSize: 9,
-      fontFamily: "Arial",
-      fill: "#333",
-      align: "center",
-      offsetX: r + 4,
-    })
-  );
-  g.add(
-    new Konva.Text({
-      x: r + 4,
-      y: r + 4,
-      width: 2 * r + 8,
-      text: labelSecondary,
-      fontSize: 9,
-      fontFamily: "Arial",
-      fill: "#333",
-      align: "center",
-      offsetX: r + 4,
-    })
-  );
-  parent.add(g);
-  return g;
-}
 
-function addPanel(
-  parent: Konva.Layer,
-  x: number,
-  y: number,
-  label: string,
-  voltage: string,
-  w = 90,
-  h = 44
-) {
-  const g = new Konva.Group({ x, y });
-  g.add(
-    new Konva.Rect({
-      width: w,
-      height: h,
-      stroke: CONNECTOR_COLOR,
-      strokeWidth: 1.5,
-      fill: "#fafafa",
-      offsetX: w / 2,
-      offsetY: h / 2,
-    })
-  );
-  g.add(
+  layer.add(
     new Konva.Text({
-      y: -h / 2 - 2,
-      width: w,
-      text: label,
-      fontSize: 11,
-      fontFamily: "Arial",
+      x: OUTER_MARGIN + 24,
+      y: headerY + 6,
+      width: noteBoxX - OUTER_MARGIN - 48,
+      text: "Building Electrical Distribution",
+      fontSize: 28,
+      fontFamily: TITLE_FONT,
       fontStyle: "bold",
-      fill: "#333",
-      align: "center",
-      offsetX: w / 2,
-    })
+      fill: DRAFT.ink,
+    }),
   );
-  g.add(
-    new Konva.Text({
-      y: 2,
-      width: w,
-      text: voltage,
-      fontSize: 9,
-      fontFamily: "Arial",
-      fill: "#555",
-      align: "center",
-      offsetX: w / 2,
-    })
-  );
-  parent.add(g);
-  return g;
-}
 
-function addMCC(
-  parent: Konva.Layer,
-  x: number,
-  y: number,
-  label: string,
-  voltage: string,
-  w = 100,
-  h = 56
-) {
-  const g = new Konva.Group({ x, y });
-  g.add(
-    new Konva.Rect({
-      width: w,
-      height: h,
-      stroke: "#0a5",
-      strokeWidth: 2,
-      fill: "#f0fff4",
-      offsetX: w / 2,
-      offsetY: h / 2,
-    })
-  );
-  g.add(
+  layer.add(
     new Konva.Text({
-      y: -h / 2 - 2,
-      width: w,
-      text: label,
-      fontSize: 11,
-      fontFamily: "Arial",
+      x: OUTER_MARGIN + 24,
+      y: headerY + 44,
+      width: noteBoxX - OUTER_MARGIN - 48,
+      text: "Single-Line Diagram",
+      fontSize: 20,
+      fontFamily: BODY_FONT,
       fontStyle: "bold",
-      fill: "#0a5",
-      align: "center",
-      offsetX: w / 2,
-    })
+      fill: DRAFT.switchboardAccent,
+      letterSpacing: 0.6,
+    }),
   );
-  g.add(
-    new Konva.Text({
-      y: 2,
-      width: w,
-      text: voltage + " · Motor Control",
-      fontSize: 9,
-      fontFamily: "Arial",
-      fill: "#555",
-      align: "center",
-      offsetX: w / 2,
-    })
-  );
-  parent.add(g);
-  return g;
-}
 
-function addSwitchboard(
-  parent: Konva.Layer,
-  x: number,
-  y: number,
-  label: string,
-  voltage: string,
-  w = 120,
-  h = 52
-) {
-  const g = new Konva.Group({ x, y });
-  g.add(
-    new Konva.Rect({
-      width: w,
-      height: h,
-      stroke: "#05a",
-      strokeWidth: 2,
-      fill: "#f0f8ff",
-      offsetX: w / 2,
-      offsetY: h / 2,
-    })
-  );
-  g.add(
+  layer.add(
     new Konva.Text({
-      y: -h / 2 - 2,
-      width: w,
-      text: label,
+      x: OUTER_MARGIN + 24,
+      y: headerY + 72,
+      width: noteBoxX - OUTER_MARGIN - 48,
+      text: "Conceptual power distribution arrangement drafted for clear feeder hierarchy and presentation fit.",
       fontSize: 12,
-      fontFamily: "Arial",
-      fontStyle: "bold",
-      fill: "#05a",
-      align: "center",
-      offsetX: w / 2,
-    })
+      fontFamily: BODY_FONT,
+      fill: DRAFT.muted,
+      lineHeight: 1.25,
+    }),
   );
-  g.add(
+
+  layer.add(
     new Konva.Text({
-      y: 2,
-      width: w,
-      text: voltage,
-      fontSize: 10,
-      fontFamily: "Arial",
-      fill: "#555",
-      align: "center",
-      offsetX: w / 2,
-    })
+      x: noteBoxX + 18,
+      y: headerY + 14,
+      width: noteBoxWidth - 36,
+      text: "Drawing Notes",
+      fontSize: 13,
+      fontFamily: BODY_FONT,
+      fontStyle: "bold",
+      fill: DRAFT.ink,
+    }),
   );
-  parent.add(g);
-  return g;
+
+  layer.add(
+    new Konva.Text({
+      x: noteBoxX + 18,
+      y: headerY + 38,
+      width: noteBoxWidth - 36,
+      text: "1. Schematic representation only; conductor and breaker sizes omitted for clarity.\n2. Feeders and branch equipment are auto-spaced from the model breadth.\n3. Sheet is fit-to-viewport on load and remains pannable with wheel zoom.",
+      fontSize: 11,
+      fontFamily: BODY_FONT,
+      fill: DRAFT.muted,
+      lineHeight: 1.45,
+    }),
+  );
+
+  layer.add(
+    new Konva.Line({
+      points: [OUTER_MARGIN, footerTop, sheet.width - OUTER_MARGIN, footerTop],
+      stroke: DRAFT.paperStroke,
+      strokeWidth: 1.1,
+    }),
+  );
+
+  renderTitleBlock(layer, sheet.width, footerTop);
 }
 
-function addLoad(
-  parent: Konva.Layer,
-  x: number,
-  y: number,
-  label: string,
-  type: "motor" | "lighting" | "receptacle" | "equipment" = "equipment"
-) {
-  const g = new Konva.Group({ x, y });
-  const r = 14;
-  const fill = type === "motor" ? "#e8f5e9" : type === "lighting" ? "#fffde7" : "#f5f5f5";
-  g.add(
-    new Konva.Circle({
-      radius: r,
-      stroke: CONNECTOR_COLOR,
+function renderTitleBlock(layer: Konva.Layer, pageWidth: number, footerTop: number) {
+  const usableWidth = pageWidth - OUTER_MARGIN * 2;
+  const leftBlockWidth = usableWidth * 0.56;
+  const centerBlockWidth = usableWidth * 0.18;
+  const rightBlockWidth = usableWidth - leftBlockWidth - centerBlockWidth;
+  const leftX = OUTER_MARGIN;
+  const centerX = leftX + leftBlockWidth;
+  const rightX = centerX + centerBlockWidth;
+
+  layer.add(
+    new Konva.Line({
+      points: [centerX, footerTop, centerX, footerTop + FOOTER_HEIGHT],
+      stroke: DRAFT.paperStroke,
       strokeWidth: 1,
-      fill,
-    })
+    }),
   );
-  const sym = type === "motor" ? "M" : type === "lighting" ? "L" : "•";
-  g.add(
+  layer.add(
+    new Konva.Line({
+      points: [rightX, footerTop, rightX, footerTop + FOOTER_HEIGHT],
+      stroke: DRAFT.paperStroke,
+      strokeWidth: 1,
+    }),
+  );
+  layer.add(
+    new Konva.Line({
+      points: [rightX, footerTop + FOOTER_HEIGHT / 2, pageWidth - OUTER_MARGIN, footerTop + FOOTER_HEIGHT / 2],
+      stroke: DRAFT.paperStroke,
+      strokeWidth: 1,
+    }),
+  );
+
+  layer.add(
     new Konva.Text({
-      text: sym,
+      x: leftX + 18,
+      y: footerTop + 10,
+      width: leftBlockWidth - 36,
+      text: "PROJECT",
       fontSize: 10,
-      fontFamily: "Arial",
+      fontFamily: BODY_FONT,
       fontStyle: "bold",
-      fill: "#333",
-      align: "center",
-      offsetX: 4,
-      offsetY: 5,
-      x: -4,
-      y: -5,
-    })
+      fill: DRAFT.detail,
+    }),
   );
-  g.add(
+  layer.add(
     new Konva.Text({
-      y: r + 2,
-      width: 70,
-      text: label,
-      fontSize: 8,
-      fontFamily: "Arial",
-      fill: "#555",
-      align: "center",
-      offsetX: 35,
-    })
+      x: leftX + 18,
+      y: footerTop + 26,
+      width: leftBlockWidth - 36,
+      text: "DiagJS Power Distribution Demonstration",
+      fontSize: 18,
+      fontFamily: TITLE_FONT,
+      fontStyle: "bold",
+      fill: DRAFT.ink,
+    }),
   );
-  parent.add(g);
-  return g;
+  layer.add(
+    new Konva.Text({
+      x: leftX + 18,
+      y: footerTop + 54,
+      width: leftBlockWidth - 36,
+      text: "Drawing: Professionally drafted single-line diagram with adaptive feeder layout",
+      fontSize: 12,
+      fontFamily: BODY_FONT,
+      fill: DRAFT.muted,
+    }),
+  );
+
+  layer.add(
+    new Konva.Text({
+      x: centerX + 16,
+      y: footerTop + 10,
+      width: centerBlockWidth - 32,
+      text: "STATUS",
+      fontSize: 10,
+      fontFamily: BODY_FONT,
+      fontStyle: "bold",
+      fill: DRAFT.detail,
+    }),
+  );
+  layer.add(
+    new Konva.Text({
+      x: centerX + 16,
+      y: footerTop + 30,
+      width: centerBlockWidth - 32,
+      text: "Concept Draft",
+      fontSize: 16,
+      fontFamily: BODY_FONT,
+      fontStyle: "bold",
+      fill: DRAFT.switchboardAccent,
+    }),
+  );
+  layer.add(
+    new Konva.Text({
+      x: centerX + 16,
+      y: footerTop + 54,
+      width: centerBlockWidth - 32,
+      text: "Scale: NTS",
+      fontSize: 12,
+      fontFamily: BODY_FONT,
+      fill: DRAFT.muted,
+    }),
+  );
+
+  layer.add(
+    new Konva.Text({
+      x: rightX + 16,
+      y: footerTop + 10,
+      width: rightBlockWidth - 32,
+      text: "REV",
+      fontSize: 10,
+      fontFamily: BODY_FONT,
+      fontStyle: "bold",
+      fill: DRAFT.detail,
+    }),
+  );
+  layer.add(
+    new Konva.Text({
+      x: rightX + 16,
+      y: footerTop + 28,
+      width: rightBlockWidth - 32,
+      text: "A",
+      fontSize: 18,
+      fontFamily: BODY_FONT,
+      fontStyle: "bold",
+      fill: DRAFT.ink,
+    }),
+  );
+  layer.add(
+    new Konva.Text({
+      x: rightX + 16,
+      y: footerTop + FOOTER_HEIGHT / 2 + 8,
+      width: rightBlockWidth - 32,
+      text: "SHEET",
+      fontSize: 10,
+      fontFamily: BODY_FONT,
+      fontStyle: "bold",
+      fill: DRAFT.detail,
+    }),
+  );
+  layer.add(
+    new Konva.Text({
+      x: rightX + 16,
+      y: footerTop + FOOTER_HEIGHT / 2 + 26,
+      width: rightBlockWidth - 32,
+      text: "E-SLD-01",
+      fontSize: 18,
+      fontFamily: BODY_FONT,
+      fontStyle: "bold",
+      fill: DRAFT.ink,
+    }),
+  );
 }
 
-function addBus(
-  parent: Konva.Layer,
+function renderConnectors(layer: Konva.Layer, node: LayoutNode) {
+  if (!node.children.length) {
+    return;
+  }
+
+  const parentCenterX = node.x + node.metrics.width / 2;
+  const parentBottomY = node.y + node.metrics.bottomConnectorOffset;
+  const childCenters = node.children.map((child) => child.x + child.metrics.width / 2);
+  const childTopY = node.children[0].y + node.children[0].metrics.topConnectorOffset;
+
+  if (node.children.length === 1) {
+    const childCenterX = childCenters[0];
+    const midY = parentBottomY + node.childGapY * 0.45;
+    const strokeWidth = node.children[0].data.kind === "load" ? 1.4 : 2;
+
+    layer.add(
+      new Konva.Line({
+        points: [parentCenterX, parentBottomY, parentCenterX, midY, childCenterX, midY, childCenterX, childTopY],
+        stroke: DRAFT.line,
+        strokeWidth,
+        lineCap: "round",
+        lineJoin: "round",
+      }),
+    );
+  } else {
+    const busY = parentBottomY + node.childGapY * 0.42;
+
+    layer.add(
+      new Konva.Line({
+        points: [parentCenterX, parentBottomY, parentCenterX, busY],
+        stroke: DRAFT.line,
+        strokeWidth: 2,
+        lineCap: "round",
+      }),
+    );
+    layer.add(
+      new Konva.Line({
+        points: [childCenters[0], busY, childCenters[childCenters.length - 1], busY],
+        stroke: node.data.kind === "switchboard" ? DRAFT.bus : DRAFT.line,
+        strokeWidth: node.data.kind === "switchboard" ? 3 : 2,
+        lineCap: "round",
+      }),
+    );
+
+    for (const child of node.children) {
+      const childCenterX = child.x + child.metrics.width / 2;
+      const childEntryY = child.y + child.metrics.topConnectorOffset;
+      const strokeWidth = child.data.kind === "load" ? 1.35 : 1.8;
+
+      layer.add(
+        new Konva.Line({
+          points: [childCenterX, busY, childCenterX, childEntryY],
+          stroke: DRAFT.line,
+          strokeWidth,
+          lineCap: "round",
+        }),
+      );
+      layer.add(
+        new Konva.Circle({
+          x: childCenterX,
+          y: busY,
+          radius: child.data.kind === "load" ? 2.2 : 2.8,
+          fill: DRAFT.line,
+          strokeEnabled: false,
+        }),
+      );
+    }
+  }
+
+  for (const child of node.children) {
+    renderConnectors(layer, child);
+  }
+}
+
+function renderNodes(layer: Konva.Layer, node: LayoutNode) {
+  renderNode(layer, node);
+
+  for (const child of node.children) {
+    renderNodes(layer, child);
+  }
+}
+
+function renderNode(layer: Konva.Layer, node: LayoutNode) {
+  switch (node.data.kind) {
+    case "service":
+      renderService(layer, node);
+      break;
+    case "transformer":
+      renderTransformer(layer, node);
+      break;
+    case "switchboard":
+    case "panel":
+    case "mcc":
+      renderEquipmentCard(layer, node);
+      break;
+    case "load":
+      renderLoad(layer, node);
+      break;
+  }
+}
+
+function renderService(layer: Konva.Layer, node: LayoutNode) {
+  const group = new Konva.Group({ x: node.x, y: node.y });
+  const centerX = node.metrics.width / 2;
+  const circleY = 32;
+  const labelWidth = node.metrics.width - 12;
+  const textStartY = 78;
+
+  group.add(
+    new Konva.Line({
+      points: [centerX, 0, centerX, 10],
+      stroke: node.metrics.accent,
+      strokeWidth: 2.4,
+      lineCap: "round",
+    }),
+  );
+  group.add(
+    new Konva.Circle({
+      x: centerX,
+      y: circleY,
+      radius: 28,
+      stroke: node.metrics.accent,
+      strokeWidth: 2.2,
+      fill: node.metrics.fill,
+    }),
+  );
+  group.add(
+    new Konva.Line({
+      points: [centerX - 4, circleY - 16, centerX + 8, circleY - 2, centerX + 1, circleY - 2, centerX + 10, circleY + 14, centerX - 6, circleY + 2, centerX + 1, circleY + 2],
+      stroke: node.metrics.accent,
+      strokeWidth: 2,
+      closed: true,
+      fill: "#fff5ef",
+      lineJoin: "round",
+    }),
+  );
+  group.add(
+    new Konva.Rect({
+      x: centerX - 36,
+      y: 56,
+      width: 72,
+      height: 18,
+      cornerRadius: 9,
+      fill: "#fff1e8",
+      stroke: node.metrics.accent,
+      strokeWidth: 1,
+    }),
+  );
+  group.add(
+    new Konva.Text({
+      x: centerX - 36,
+      y: 59,
+      width: 72,
+      text: "UTILITY",
+      fontSize: 10,
+      fontFamily: BODY_FONT,
+      fontStyle: "bold",
+      fill: node.metrics.accent,
+      align: "center",
+      letterSpacing: 0.5,
+    }),
+  );
+  addCenteredText(group, node.data.label, 0, textStartY, labelWidth, 14, DRAFT.ink, "bold");
+
+  let currentY = textStartY + measureTextHeight(node.data.label, labelWidth, 14, "bold") + 6;
+  if (node.data.subtitle) {
+    addCenteredText(group, node.data.subtitle, 0, currentY, labelWidth, 11, DRAFT.muted);
+    currentY += measureTextHeight(node.data.subtitle, labelWidth, 11) + 4;
+  }
+  if (node.data.voltage) {
+    addCenteredText(group, node.data.voltage, 0, currentY, labelWidth, 11, DRAFT.serviceAccent, "bold");
+  }
+
+  layer.add(group);
+}
+
+function renderTransformer(layer: Konva.Layer, node: LayoutNode) {
+  const group = new Konva.Group({ x: node.x, y: node.y });
+  const centerX = node.metrics.width / 2;
+  const coilsY = 30;
+  const textWidth = node.metrics.width - 20;
+  const textStartY = 58;
+
+  group.add(
+    new Konva.Line({
+      points: [centerX, 0, centerX, 12],
+      stroke: node.metrics.accent,
+      strokeWidth: 2.2,
+      lineCap: "round",
+    }),
+  );
+  group.add(
+    new Konva.Circle({
+      x: centerX - 24,
+      y: coilsY,
+      radius: 18,
+      stroke: node.metrics.accent,
+      strokeWidth: 2,
+      fill: node.metrics.fill,
+    }),
+  );
+  group.add(
+    new Konva.Circle({
+      x: centerX + 24,
+      y: coilsY,
+      radius: 18,
+      stroke: node.metrics.accent,
+      strokeWidth: 2,
+      fill: node.metrics.fill,
+    }),
+  );
+  group.add(
+    new Konva.Line({
+      points: [centerX - 6, coilsY, centerX + 6, coilsY],
+      stroke: node.metrics.accent,
+      strokeWidth: 1.6,
+      lineCap: "round",
+    }),
+  );
+  group.add(
+    new Konva.Rect({
+      x: centerX - 34,
+      y: 6,
+      width: 68,
+      height: 14,
+      cornerRadius: 7,
+      fill: "#fff4e9",
+      stroke: node.metrics.accent,
+      strokeWidth: 1,
+    }),
+  );
+  group.add(
+    new Konva.Text({
+      x: centerX - 34,
+      y: 8,
+      width: 68,
+      text: "XFMR",
+      fontSize: 9,
+      fontFamily: BODY_FONT,
+      fontStyle: "bold",
+      fill: node.metrics.accent,
+      align: "center",
+      letterSpacing: 0.5,
+    }),
+  );
+  addCenteredText(group, node.data.label, 10, textStartY, textWidth, 14, DRAFT.ink, "bold");
+
+  let currentY = textStartY + measureTextHeight(node.data.label, textWidth, 14, "bold") + 6;
+  if (node.data.subtitle) {
+    addCenteredText(group, node.data.subtitle, 10, currentY, textWidth, 11, DRAFT.muted);
+    currentY += measureTextHeight(node.data.subtitle, textWidth, 11) + 4;
+  }
+  if (node.data.voltage) {
+    addCenteredText(group, node.data.voltage, 10, currentY, textWidth, 11, DRAFT.transformerAccent, "bold");
+  }
+
+  layer.add(group);
+}
+
+function renderEquipmentCard(layer: Konva.Layer, node: LayoutNode) {
+  const group = new Konva.Group({ x: node.x, y: node.y });
+  const width = node.metrics.width;
+  const height = node.metrics.height;
+  const accentWidth = node.data.kind === "switchboard" ? 10 : 8;
+  const textX = 18 + accentWidth;
+  const textWidth = width - textX - 18;
+  const topBandHeight = node.data.kind === "switchboard" ? 24 : 22;
+
+  group.add(
+    new Konva.Rect({
+      width,
+      height,
+      cornerRadius: 10,
+      fill: node.metrics.fill,
+      stroke: DRAFT.line,
+      strokeWidth: node.data.kind === "switchboard" ? 1.9 : 1.5,
+    }),
+  );
+  group.add(
+    new Konva.Rect({
+      width: accentWidth,
+      height,
+      cornerRadius: 10,
+      fill: node.metrics.accent,
+      strokeEnabled: false,
+    }),
+  );
+  group.add(
+    new Konva.Line({
+      points: [accentWidth + 12, topBandHeight, width - 12, topBandHeight],
+      stroke: node.metrics.accent,
+      strokeWidth: 1.3,
+      opacity: 0.75,
+    }),
+  );
+
+  addTextBlock(group, node.data.label, textX, 10, textWidth, 14, DRAFT.ink, "bold");
+
+  let currentY = 10 + measureTextHeight(node.data.label, textWidth, 14, "bold") + 6;
+  if (node.data.subtitle) {
+    addTextBlock(group, node.data.subtitle, textX, currentY, textWidth, 11, DRAFT.muted);
+    currentY += measureTextHeight(node.data.subtitle, textWidth, 11) + 4;
+  }
+  if (node.data.voltage) {
+    addTextBlock(group, node.data.voltage, textX, currentY, textWidth, 11, node.metrics.accent, "bold");
+  }
+
+  if (node.data.kind === "switchboard") {
+    renderSwitchboardDetail(group, width, height);
+  }
+  if (node.data.kind === "panel") {
+    renderPanelDetail(group, width, height);
+  }
+  if (node.data.kind === "mcc") {
+    renderMccDetail(group, width, height, node.metrics.accent);
+  }
+
+  layer.add(group);
+}
+
+function renderSwitchboardDetail(group: Konva.Group, width: number, height: number) {
+  const startY = height - 20;
+  const segmentWidth = (width - 30) / 4;
+
+  for (let index = 0; index < 4; index += 1) {
+    const x = 15 + segmentWidth * index;
+    group.add(
+      new Konva.Rect({
+        x,
+        y: startY,
+        width: segmentWidth - 6,
+        height: 8,
+        cornerRadius: 2,
+        fill: "#dfe7ec",
+        stroke: DRAFT.detail,
+        strokeWidth: 0.8,
+      }),
+    );
+  }
+}
+
+function renderPanelDetail(group: Konva.Group, width: number, height: number) {
+  const lineY = height - 18;
+  group.add(
+    new Konva.Line({
+      points: [18, lineY, width - 18, lineY],
+      stroke: "#d0dae2",
+      strokeWidth: 1,
+    }),
+  );
+  group.add(
+    new Konva.Line({
+      points: [width / 2, lineY - 8, width / 2, lineY + 8],
+      stroke: DRAFT.detail,
+      strokeWidth: 1,
+    }),
+  );
+}
+
+function renderMccDetail(group: Konva.Group, width: number, height: number, accent: string) {
+  const bucketTop = height - 24;
+  const bucketWidth = (width - 42) / 3;
+
+  for (let index = 0; index < 3; index += 1) {
+    const x = 16 + bucketWidth * index;
+    group.add(
+      new Konva.Rect({
+        x,
+        y: bucketTop,
+        width: bucketWidth - 6,
+        height: 12,
+        cornerRadius: 3,
+        fill: "#e7f3ed",
+        stroke: accent,
+        strokeWidth: 0.9,
+      }),
+    );
+  }
+}
+
+function renderLoad(layer: Konva.Layer, node: LayoutNode) {
+  const group = new Konva.Group({ x: node.x, y: node.y });
+  const centerX = node.metrics.width / 2;
+  const symbolY = 18;
+  const symbolAccent = node.metrics.accent;
+  const labelWidth = node.metrics.width - 8;
+
+  group.add(
+    new Konva.Circle({
+      x: centerX,
+      y: symbolY,
+      radius: 16,
+      stroke: symbolAccent,
+      strokeWidth: 1.4,
+      fill: node.metrics.fill,
+    }),
+  );
+
+  switch (node.data.loadType) {
+    case "motor":
+      group.add(
+        new Konva.Text({
+          x: centerX - 8,
+          y: symbolY - 8,
+          width: 16,
+          text: "M",
+          fontSize: 14,
+          fontFamily: BODY_FONT,
+          fontStyle: "bold",
+          fill: symbolAccent,
+          align: "center",
+        }),
+      );
+      break;
+    case "lighting":
+      group.add(
+        new Konva.Line({
+          points: [centerX, symbolY - 10, centerX, symbolY + 5],
+          stroke: symbolAccent,
+          strokeWidth: 1.3,
+          lineCap: "round",
+        }),
+      );
+      group.add(
+        new Konva.Line({
+          points: [centerX - 7, symbolY + 5, centerX + 7, symbolY + 5],
+          stroke: symbolAccent,
+          strokeWidth: 1.3,
+          lineCap: "round",
+        }),
+      );
+      group.add(
+        new Konva.Line({
+          points: [centerX - 5, symbolY - 6, centerX, symbolY - 10, centerX + 5, symbolY - 6],
+          stroke: symbolAccent,
+          strokeWidth: 1.1,
+          lineCap: "round",
+          lineJoin: "round",
+        }),
+      );
+      break;
+    case "receptacle":
+      group.add(
+        new Konva.Circle({
+          x: centerX - 4,
+          y: symbolY,
+          radius: 2,
+          fill: symbolAccent,
+          strokeEnabled: false,
+        }),
+      );
+      group.add(
+        new Konva.Circle({
+          x: centerX + 4,
+          y: symbolY,
+          radius: 2,
+          fill: symbolAccent,
+          strokeEnabled: false,
+        }),
+      );
+      group.add(
+        new Konva.Line({
+          points: [centerX - 8, symbolY + 7, centerX + 8, symbolY + 7],
+          stroke: symbolAccent,
+          strokeWidth: 1.1,
+          lineCap: "round",
+        }),
+      );
+      break;
+    case "equipment":
+    default:
+      group.add(
+        new Konva.Rect({
+          x: centerX - 7,
+          y: symbolY - 7,
+          width: 14,
+          height: 14,
+          cornerRadius: 2,
+          stroke: symbolAccent,
+          strokeWidth: 1.2,
+          fill: "#ffffff",
+        }),
+      );
+      break;
+  }
+
+  addCenteredText(group, node.data.label, 0, 40, labelWidth, 11, DRAFT.ink, "bold");
+
+  if (node.data.subtitle) {
+    const subtitleY = 40 + measureTextHeight(node.data.label, labelWidth, 11, "bold") + 3;
+    addCenteredText(group, node.data.subtitle, 0, subtitleY, labelWidth, 10, DRAFT.muted);
+  }
+
+  layer.add(group);
+}
+
+function measureNode(node: SLDNode): NodeMetrics {
+  switch (node.kind) {
+    case "service":
+      return measureService(node);
+    case "transformer":
+      return measureTransformer(node);
+    case "switchboard":
+      return measureEquipment(node, 190, 72, DRAFT.switchboardAccent, DRAFT.equipmentFill);
+    case "panel":
+      return measureEquipment(node, 160, 68, DRAFT.panelAccent, DRAFT.panelFill);
+    case "mcc":
+      return measureEquipment(node, 176, 74, DRAFT.mccAccent, DRAFT.mccFill);
+    case "load":
+      return measureLoad(node);
+  }
+}
+
+function measureService(node: SLDNode): NodeMetrics {
+  const width = 176;
+  const textWidth = width - 12;
+  const textHeight = measureTextHeight(node.label, textWidth, 14, "bold")
+    + (node.subtitle ? measureTextHeight(node.subtitle, textWidth, 11) + 4 : 0)
+    + (node.voltage ? measureTextHeight(node.voltage, textWidth, 11, "bold") + 4 : 0);
+
+  return {
+    width,
+    height: 82 + textHeight,
+    topConnectorOffset: 0,
+    bottomConnectorOffset: 82 + textHeight,
+    accent: DRAFT.serviceAccent,
+    fill: DRAFT.serviceFill,
+  };
+}
+
+function measureTransformer(node: SLDNode): NodeMetrics {
+  const width = 180;
+  const textWidth = width - 20;
+  const textHeight = measureTextHeight(node.label, textWidth, 14, "bold")
+    + (node.subtitle ? measureTextHeight(node.subtitle, textWidth, 11) + 4 : 0)
+    + (node.voltage ? measureTextHeight(node.voltage, textWidth, 11, "bold") + 4 : 0);
+
+  return {
+    width,
+    height: 64 + textHeight,
+    topConnectorOffset: 0,
+    bottomConnectorOffset: 64 + textHeight,
+    accent: DRAFT.transformerAccent,
+    fill: DRAFT.transformerFill,
+  };
+}
+
+function measureEquipment(
+  node: SLDNode,
+  width: number,
+  baseHeight: number,
+  accent: string,
+  fill: string,
+): NodeMetrics {
+  const textWidth = width - 44;
+  const textHeight = measureTextHeight(node.label, textWidth, 14, "bold")
+    + (node.subtitle ? measureTextHeight(node.subtitle, textWidth, 11) + 4 : 0)
+    + (node.voltage ? measureTextHeight(node.voltage, textWidth, 11, "bold") + 4 : 0);
+  const height = Math.max(baseHeight, 26 + textHeight + 18);
+
+  return {
+    width,
+    height,
+    topConnectorOffset: 0,
+    bottomConnectorOffset: height,
+    accent,
+    fill,
+  };
+}
+
+function measureLoad(node: SLDNode): NodeMetrics {
+  const width = 108;
+  const textWidth = width - 8;
+  const accent = getLoadAccent(node.loadType);
+  const textHeight = measureTextHeight(node.label, textWidth, 11, "bold")
+    + (node.subtitle ? measureTextHeight(node.subtitle, textWidth, 10) + 3 : 0);
+
+  return {
+    width,
+    height: 42 + textHeight,
+    topConnectorOffset: 0,
+    bottomConnectorOffset: 42 + textHeight,
+    accent,
+    fill: DRAFT.loadFill,
+  };
+}
+
+function getChildGapX(node: SLDNode, children: LayoutNode[]) {
+  if (!children.length) {
+    return 0;
+  }
+  if (children.every((child) => child.data.kind === "load")) {
+    return LOAD_GAP;
+  }
+  if (node.kind === "switchboard") {
+    return FEEDER_GAP;
+  }
+  return SIBLING_GAP;
+}
+
+function getChildGapY(node: SLDNode, children: LayoutNode[]) {
+  if (!children.length) {
+    return 0;
+  }
+  if (children.every((child) => child.data.kind === "load")) {
+    return LOAD_VERTICAL_GAP;
+  }
+  if (node.kind === "switchboard") {
+    return 118;
+  }
+  if (node.kind === "transformer") {
+    return 92;
+  }
+  if (node.kind === "service") {
+    return 96;
+  }
+  return 88;
+}
+
+function getLoadAccent(loadType: LoadType | undefined) {
+  switch (loadType) {
+    case "motor":
+      return DRAFT.motorAccent;
+    case "lighting":
+      return DRAFT.lightingAccent;
+    case "receptacle":
+      return DRAFT.receptacleAccent;
+    case "equipment":
+    default:
+      return DRAFT.equipmentAccent;
+  }
+}
+
+function addCenteredText(
+  group: Konva.Group,
+  text: string,
   x: number,
   y: number,
   width: number,
-  horizontal: boolean
+  fontSize: number,
+  fill: string,
+  fontStyle: string = "normal",
 ) {
-  const line = new Konva.Line({
-    points: horizontal ? [0, 0, width, 0] : [0, 0, 0, width],
-    stroke: "#f57c00",
-    strokeWidth: 3,
-  });
-  line.position({ x, y });
-  parent.add(line);
-  return line;
+  group.add(
+    new Konva.Text({
+      x,
+      y,
+      width,
+      text,
+      fontSize,
+      fontFamily: BODY_FONT,
+      fontStyle,
+      fill,
+      align: "center",
+      wrap: "word",
+      lineHeight: 1.14,
+    }),
+  );
 }
 
-function connect(
-  parent: Konva.Layer,
-  from: { x: number; y: number },
-  to: { x: number; y: number },
-  dashed = false
+function addTextBlock(
+  group: Konva.Group,
+  text: string,
+  x: number,
+  y: number,
+  width: number,
+  fontSize: number,
+  fill: string,
+  fontStyle: string = "normal",
 ) {
-  const line = new Konva.Line({
-    points: [from.x, from.y, to.x, to.y],
-    stroke: CONNECTOR_COLOR,
-    strokeWidth: 1.5,
-    dash: dashed ? [4, 4] : undefined,
-  });
-  parent.add(line);
-  line.moveToBottom();
-  return line;
+  group.add(
+    new Konva.Text({
+      x,
+      y,
+      width,
+      text,
+      fontSize,
+      fontFamily: BODY_FONT,
+      fontStyle,
+      fill,
+      wrap: "word",
+      lineHeight: 1.14,
+    }),
+  );
 }
 
-export function buildElectricalSLD(canvas: CoreCanvas): Konva.Layer {
-  const layer = new Konva.Layer();
-  canvas.stage.add(layer);
-
-  const cx = 400;
-  const dy = 85;
-  let y = 60;
-
-  // --- High voltage service ---
-  addHVService(layer, cx, y);
-  y += dy;
-
-  // Main transformer: 13.8kV -> 480Y/277V
-  addTransformer(
-    layer,
-    cx,
-    y,
-    "13.8 kV",
-    "480Y/277V"
-  );
-  connect(layer, { x: cx, y: 60 + 28 }, { x: cx, y: y - 44 });
-  y += dy;
-
-  // Main switchboard
-  addSwitchboard(layer, cx, y, "Main Switchboard (MSB)", "480V 3Φ");
-  connect(layer, { x: cx, y: y - dy + 44 }, { x: cx, y: y - 52 / 2 - 26 });
-  y += dy + 20;
-
-  // Horizontal bus representing distribution
-  addBus(layer, 120, y, 560, true);
-  const busY = y;
-  y += 40;
-
-  // Left branch: 480-208/120 transformer -> Lighting & Receptacle panels
-  const xLeft = 180;
-  addTransformer(
-    layer,
-    xLeft,
-    y,
-    "480V",
-    "208Y/120V"
-  );
-  connect(layer, { x: xLeft, y: busY }, { x: xLeft, y: y - 44 });
-
-  const panelY = y + 50;
-  addPanel(layer, xLeft - 75, panelY, "LP-1", "208Y/120V", 70, 38);
-  addPanel(layer, xLeft, panelY, "LP-2", "208Y/120V", 70, 38);
-  addPanel(layer, xLeft + 75, panelY, "RP-1", "208Y/120V", 70, 38);
-  connect(layer, { x: xLeft, y: y + 44 }, { x: xLeft, y: panelY - 19 });
-  connect(layer, { x: xLeft, y: panelY - 19 }, { x: xLeft - 75, y: panelY - 19 });
-  connect(layer, { x: xLeft, y: panelY - 19 }, { x: xLeft + 75, y: panelY - 19 });
-
-  const loadY = panelY + 55;
-  addLoad(layer, xLeft - 75, loadY, "General", "lighting");
-  addLoad(layer, xLeft - 35, loadY, "Corridors", "lighting");
-  addLoad(layer, xLeft, loadY, "Exterior", "lighting");
-  addLoad(layer, xLeft + 40, loadY, "Receptacles", "receptacle");
-  addLoad(layer, xLeft + 75, loadY, "IT / Office", "receptacle");
-  connect(layer, { x: xLeft - 75, y: panelY + 19 }, { x: xLeft - 75, y: loadY - 14 });
-  connect(layer, { x: xLeft, y: panelY + 19 }, { x: xLeft, y: loadY - 14 });
-  connect(layer, { x: xLeft + 75, y: panelY + 19 }, { x: xLeft + 75, y: loadY - 14 });
-
-  // Center branch: MCC
-  const xMcc = cx;
-  addMCC(layer, xMcc, y, "MCC-1", "480V 3Φ");
-  connect(layer, { x: xMcc, y: busY }, { x: xMcc, y: y - 56 / 2 - 28 });
-
-  const mccLoadY = y + 70;
-  addLoad(layer, xMcc - 70, mccLoadY, "Chiller #1", "motor");
-  addLoad(layer, xMcc - 25, mccLoadY, "CHW Pump", "motor");
-  addLoad(layer, xMcc + 25, mccLoadY, "AHU-1", "motor");
-  addLoad(layer, xMcc + 70, mccLoadY, "Exhaust Fan", "motor");
-  connect(layer, { x: xMcc, y: y + 28 }, { x: xMcc, y: mccLoadY - 14 });
-  connect(layer, { x: xMcc, y: mccLoadY - 14 }, { x: xMcc - 70, y: mccLoadY - 14 });
-  connect(layer, { x: xMcc, y: mccLoadY - 14 }, { x: xMcc + 70, y: mccLoadY - 14 });
-
-  // Right branch: 480V distribution panel -> HVAC and other
-  const xRight = 620;
-  addPanel(layer, xRight, y, "DP-1", "480V 3Φ", 80, 44);
-  connect(layer, { x: xRight, y: busY }, { x: xRight, y: y - 22 });
-
-  const dp1LoadY = y + 58;
-  addLoad(layer, xRight - 40, dp1LoadY, "RTU-1", "equipment");
-  addLoad(layer, xRight + 40, dp1LoadY, "Elevator", "equipment");
-  connect(layer, { x: xRight, y: y + 22 }, { x: xRight, y: dp1LoadY - 14 });
-
-  // Second 480V panel (e.g. tenant or mechanical)
-  const xRight2 = 520;
-  addPanel(layer, xRight2, y, "DP-2", "480V 3Φ", 75, 40);
-  connect(layer, { x: xRight2, y: busY }, { x: xRight2, y: y - 20 });
-
-  const dp2LoadY = y + 52;
-  addLoad(layer, xRight2, dp2LoadY, "Kitchen HVAC", "equipment");
-  connect(layer, { x: xRight2, y: y + 20 }, { x: xRight2, y: dp2LoadY - 14 });
-
-  // Second MCC (mechanical / basement)
-  const xMcc2 = 280;
-  addMCC(layer, xMcc2, y, "MCC-2", "480V 3Φ");
-  connect(layer, { x: xMcc2, y: busY }, { x: xMcc2, y: y - 56 / 2 - 28 });
-
-  const mcc2LoadY = y + 70;
-  addLoad(layer, xMcc2 - 55, mcc2LoadY, "Boiler", "motor");
-  addLoad(layer, xMcc2 - 15, mcc2LoadY, "CW Pump", "motor");
-  addLoad(layer, xMcc2 + 30, mcc2LoadY, "AHU-2", "motor");
-  connect(layer, { x: xMcc2, y: y + 28 }, { x: xMcc2, y: mcc2LoadY - 14 });
-  connect(layer, { x: xMcc2, y: mcc2LoadY - 14 }, { x: xMcc2 - 55, y: mcc2LoadY - 14 });
-  connect(layer, { x: xMcc2, y: mcc2LoadY - 14 }, { x: xMcc2 + 30, y: mcc2LoadY - 14 });
-
-  // Title
-  const title = new Konva.Text({
-    x: 20,
-    y: 12,
-    text: "Building Electrical Distribution — Single Line Diagram",
-    fontSize: 14,
-    fontFamily: "Arial",
-    fontStyle: "bold",
-    fill: "#111",
+function measureTextHeight(
+  text: string,
+  width: number,
+  fontSize: number,
+  fontStyle: string = "normal",
+) {
+  const probe = new Konva.Text({
+    text,
+    width,
+    fontSize,
+    fontFamily: BODY_FONT,
+    fontStyle,
+    wrap: "word",
+    lineHeight: 1.14,
   });
-  layer.add(title);
 
-  layer.draw();
-  return layer;
+  return Math.ceil(probe.height());
 }

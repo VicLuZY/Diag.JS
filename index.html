@@ -4,15 +4,120 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + TS</title>
+    <title>DiagJS | Extensive SLD Showcase</title>
   </head>
   <body>
-    <div id="app" style="display:flex; flex-direction: row;">
-      <div id="testDiv">
-      </div>
-    </div>
-    <script type="module" src="/src/main.ts">
+    <div id="app">
+      <main class="homepage">
+        <section class="hero-panel">
+          <div class="hero-copy">
+            <p class="eyebrow">DiagJS / Extensive SLD Example</p>
+            <h1>Single-line diagrams that still read like engineered drawings at scale.</h1>
+            <p class="hero-lede">
+              The homepage now leads with a full building power distribution example rendered as a drafted sheet,
+              with adaptive feeder spacing, hierarchy-aware symbols, and fit-to-viewport presentation.
+            </p>
+            <div class="hero-actions">
+              <a class="button-link" href="#showcase">Inspect the live example</a>
+              <p class="interaction-note">Wheel to zoom. Drag to pan. The sheet auto-fits on load.</p>
+            </div>
+          </div>
+          <aside class="hero-summary" aria-label="Diagram summary">
+            <article class="stat-card stat-card-emphasis">
+              <span class="stat-label">Primary Feeders</span>
+              <strong class="stat-value" data-stat="primary-feeders">0</strong>
+              <span class="stat-note">main downstream branches from the switchboard</span>
+            </article>
+            <article class="stat-card">
+              <span class="stat-label">Distribution Nodes</span>
+              <strong class="stat-value" data-stat="distribution-nodes">0</strong>
+              <span class="stat-note">service, transformers, switchboards, panels, MCCs</span>
+            </article>
+            <article class="stat-card">
+              <span class="stat-label">End Loads</span>
+              <strong class="stat-value" data-stat="loads">0</strong>
+              <span class="stat-note">motors, receptacles, lighting, and equipment</span>
+            </article>
+            <article class="stat-card">
+              <span class="stat-label">Diagram Depth</span>
+              <strong class="stat-value" data-stat="depth">0</strong>
+              <span class="stat-note">hierarchy levels from service to load</span>
+            </article>
+          </aside>
+        </section>
 
-    </script>
+        <section class="showcase-panel" id="showcase">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Homepage Demo</p>
+              <h2>Extensive building electrical distribution SLD</h2>
+            </div>
+            <p class="section-copy" id="diagramSummary">
+              Large-model readability comes from page composition, disciplined routing, and sizing derived from the
+              structure of the model.
+            </p>
+          </div>
+
+          <div class="showcase-layout">
+            <aside class="showcase-sidebar">
+              <article class="info-card">
+                <p class="eyebrow">Major Branches</p>
+                <h3>Downstream distribution</h3>
+                <ul class="branch-list" id="branchList"></ul>
+              </article>
+
+              <article class="info-card">
+                <p class="eyebrow">Voltage Stack</p>
+                <h3>Designations in view</h3>
+                <div class="tag-list" id="voltageTags"></div>
+              </article>
+
+              <article class="info-card info-card-accent">
+                <p class="eyebrow">Rendering Behavior</p>
+                <h3>What this example is proving</h3>
+                <ul class="behavior-list">
+                  <li>Adaptive page sizing from model breadth and depth</li>
+                  <li>Professional sheet frame, notes, and title block</li>
+                  <li>Hierarchy-aware feeder routing and symbol styling</li>
+                  <li>Responsive viewport fitting without crushing the drawing</li>
+                </ul>
+              </article>
+            </aside>
+
+            <section class="canvas-shell" aria-label="Single line diagram canvas">
+              <header class="canvas-chrome">
+                <div>
+                  <p class="eyebrow">Live Canvas</p>
+                  <h3>Building Electrical Distribution</h3>
+                </div>
+                <p class="canvas-note">Drafted SLD sheet rendered with Konva</p>
+              </header>
+              <div class="canvas-stage">
+                <div id="testDiv"></div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="feature-ribbon" aria-label="Rendering highlights">
+          <article class="feature-card">
+            <p class="eyebrow">Presentation First</p>
+            <h3>The sheet reads like a deliverable</h3>
+            <p>Margins, title block, notes, and drawing language are part of the rendering system, not afterthoughts.</p>
+          </article>
+          <article class="feature-card">
+            <p class="eyebrow">Model Driven</p>
+            <h3>Layout expands with the system</h3>
+            <p>Feeder spacing and sheet size respond to node count and branch breadth instead of fixed coordinates.</p>
+          </article>
+          <article class="feature-card">
+            <p class="eyebrow">Viewport Aware</p>
+            <h3>Large diagrams still open cleanly</h3>
+            <p>The scene fits on load, centers correctly, and remains inspectable with bounded pan and zoom.</p>
+          </article>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
