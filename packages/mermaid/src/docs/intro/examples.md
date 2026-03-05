@@ -1,5 +1,21 @@
 ## Diagram Types
 
+### [Single-line diagram (SLD)](/intro/) — DiagJS primary
+
+```mermaid-example
+sld LR
+UTL1[Utility]{v="480V"}
+GEN1[Generator]{v="480V"}
+ATS1[Main ATS]{profile="basic", out_breaker=true}
+SWG1[Switchgear]{v="480V"}
+UTL1 --> ATS1:norm
+GEN1 --> ATS1:emer
+ATS1:load ==> SWG1
+SWG1 -->|Feeder F-12| CND1{type="EMT", len="12m"} --> CAB1{cond="4C", size="3/0"} --> PNL1[Panel L1]{v="480V"}
+PNL1 --> CBR_PNL1_1 --> LGT1[Lighting]
+PNL1 --> CBR_PNL1_2 --> RCP1[Receptacles]
+```
+
 ### [Flowchart](../syntax/flowchart.md?id=flowcharts-basic-syntax)
 
 ```mermaid-example

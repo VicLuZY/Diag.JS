@@ -21,10 +21,12 @@ import timelineDiagram from './examples/timeline.js';
 import quadrantChart from './examples/quadrant-chart.js';
 import packetDiagram from './examples/packet.js';
 import blockDiagram from './examples/block.js';
+import sldDiagram from './examples/sld.js';
 import treemapDiagram from './examples/treemap.js';
 import vennDiagram from './examples/venn.js';
 
 export const diagramData: DiagramMetadata[] = [
+  sldDiagram,
   flowChart,
   c4,
   ishikawaDiagram,
