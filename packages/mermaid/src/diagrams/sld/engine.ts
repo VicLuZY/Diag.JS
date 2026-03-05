@@ -1,4 +1,12 @@
-import { DEVICE_CATALOG, isAssemblyCode, isBusCode, isDeviceCode, type DeviceCode } from './device-catalog.js';
+/* cspell:disable */
+import {
+  DEVICE_CATALOG,
+  isAssemblyCode,
+  isBusCode,
+  isDeviceCode,
+  type DeviceCode,
+} from './device-catalog.js';
+import { SLD_SYMBOL_SPECS } from './symbol-specs.js';
 import type {
   Diagram,
   Direction,
@@ -8,43 +16,42 @@ import type {
   Metadata,
   MetaValue,
   Node,
-  NodeId,
   Statement,
 } from './sld-types.js';
 
-type ParsedEndpoint = {
+interface ParsedEndpoint {
   endpoint: Endpoint;
   node: Node;
-};
+}
 
-export type ParsedSld = {
+export interface ParsedSld {
   diagram: Diagram;
   nodes: Node[];
   edges: Edge[];
-};
+}
 
-export type ExpandedSld = {
+export interface ExpandedSld {
   direction: Direction;
   nodes: Node[];
   edges: Edge[];
   portMap: Record<string, Endpoint>;
   expandedAssemblies: string[];
-};
+}
 
 export type AtssProfile = 'basic' | 'bypass' | 'bypass_iso';
 
-export type AtssConfig = {
+export interface AtssConfig {
   profile?: AtssProfile;
   out_breaker?: boolean;
   bypass_norm?: boolean;
   bypass_emer?: boolean;
-};
+}
 
-export type ExpandedGraph = {
+export interface ExpandedGraph {
   nodes: Node[];
   edges: Edge[];
   portMap: Record<string, Endpoint>;
-};
+}
 
 const DIRECTION_SET = new Set<Direction>(['LR', 'RL', 'TD', 'BU']);
 const EDGE_OPS: EdgeOp[] = ['<-->', '-.->', '-->', '==>', '---'];
@@ -94,13 +101,10 @@ const parseCodeFromId = (id: string): DeviceCode => {
   return code;
 };
 
-const createNodeFromId = (
-  id: string,
-  data: { label?: string; meta?: Metadata } = {}
-): Node => {
+const createNodeFromId = (id: string, data: { label?: string; meta?: Metadata } = {}): Node => {
   const code = parseCodeFromId(id);
   return {
-    id: id as NodeId,
+    id: id,
     code,
     category: DEVICE_CATALOG[code].category,
     ...(data.label ? { label: data.label } : {}),
@@ -113,7 +117,9 @@ const mergeNodes = (existing: Node | undefined, incoming: Node) => {
     return incoming;
   }
   const mergedMeta =
-    existing.meta || incoming.meta ? { ...(existing.meta ?? {}), ...(incoming.meta ?? {}) } : undefined;
+    existing.meta || incoming.meta
+      ? { ...(existing.meta ?? {}), ...(incoming.meta ?? {}) }
+      : undefined;
   return {
     ...existing,
     label: incoming.label ?? existing.label,
@@ -227,7 +233,7 @@ const parseMetadata = (
           }
           const key = pair.slice(0, indexOfEquals).trim();
           const value = pair.slice(indexOfEquals + 1).trim();
-          if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+          if (!/^[A-Z_a-z]\w*$/.test(key)) {
             throw new Error(`Invalid metadata key "${key}".`);
           }
           metadata[key] = parseMetaValue(value);
@@ -244,9 +250,12 @@ const parseMetadata = (
   throw new Error('Unterminated metadata block.');
 };
 
-const parseNodeRef = (line: string, startIndex: number): { id: string; port?: string; nextIndex: number } => {
+const parseNodeRef = (
+  line: string,
+  startIndex: number
+): { id: string; port?: string; nextIndex: number } => {
   let cursor = startIndex;
-  const idMatch = line.slice(cursor).match(/^[A-Za-z][A-Za-z0-9_]*/);
+  const idMatch = /^[A-Za-z]\w*/.exec(line.slice(cursor));
   if (!idMatch) {
     throw new Error(`Expected node identifier at "${line.slice(cursor)}".`);
   }
@@ -255,7 +264,7 @@ const parseNodeRef = (line: string, startIndex: number): { id: string; port?: st
 
   let port: string | undefined;
   if (line[cursor] === ':') {
-    const portMatch = line.slice(cursor + 1).match(/^[A-Za-z_][A-Za-z0-9_]*/);
+    const portMatch = /^[A-Z_a-z]\w*/.exec(line.slice(cursor + 1));
     if (!portMatch) {
       throw new Error(`Invalid port reference after "${id}:".`);
     }
@@ -266,7 +275,10 @@ const parseNodeRef = (line: string, startIndex: number): { id: string; port?: st
   return { id, port, nextIndex: cursor };
 };
 
-const parseEndpoint = (line: string, startIndex: number): ParsedEndpoint & { nextIndex: number } => {
+const parseEndpoint = (
+  line: string,
+  startIndex: number
+): ParsedEndpoint & { nextIndex: number } => {
   let cursor = skipWhitespace(line, startIndex);
   const ref = parseNodeRef(line, cursor);
   cursor = ref.nextIndex;
@@ -298,7 +310,10 @@ const parseEndpoint = (line: string, startIndex: number): ParsedEndpoint & { nex
   };
 };
 
-const parseEdgeOp = (line: string, startIndex: number): { op: EdgeOp; nextIndex: number } | null => {
+const parseEdgeOp = (
+  line: string,
+  startIndex: number
+): { op: EdgeOp; nextIndex: number } | null => {
   const cursor = skipWhitespace(line, startIndex);
   const segment = line.slice(cursor);
   for (const candidate of EDGE_OPS) {
@@ -312,7 +327,10 @@ const parseEdgeOp = (line: string, startIndex: number): { op: EdgeOp; nextIndex:
   return null;
 };
 
-const parseEdgeLabel = (line: string, startIndex: number): { label: string; nextIndex: number } | null => {
+const parseEdgeLabel = (
+  line: string,
+  startIndex: number
+): { label: string; nextIndex: number } | null => {
   let cursor = skipWhitespace(line, startIndex);
   if (line[cursor] !== '|') {
     return null;
@@ -406,11 +424,7 @@ const parseNodeLine = (line: string): Statement[] => {
   return [{ kind: 'node', node: endpointResult.node }];
 };
 
-const flattenStatements = (
-  statements: Statement[],
-  nodeById: Map<string, Node>,
-  edges: Edge[]
-) => {
+const flattenStatements = (statements: Statement[], nodeById: Map<string, Node>, edges: Edge[]) => {
   for (const statement of statements) {
     if (statement.kind === 'node') {
       const merged = mergeNodes(nodeById.get(statement.node.id), statement.node);
@@ -446,7 +460,11 @@ const listOutPorts = (code: DeviceCode) => {
     .map(([name]) => name);
 };
 
-type PortShape = { dir: 'in' | 'out' | 'io'; kind?: 'power' | 'control'; note?: string };
+interface PortShape {
+  dir: 'in' | 'out' | 'io';
+  kind?: 'power' | 'control';
+  note?: string;
+}
 
 const getPortDef = (code: DeviceCode, portName: string) => {
   return (DEVICE_CATALOG[code].ports as Record<string, PortShape>)[portName];
@@ -546,7 +564,7 @@ export const parseSld = (input: string): ParsedSld => {
     }
 
     if (!headerSeen) {
-      const headerMatch = trimmed.match(/^(?:sld|graph)\s+(LR|RL|TD|BU)\s*$/i);
+      const headerMatch = /^(?:sld|graph)\s+(lr|rl|td|bu)\s*$/i.exec(trimmed);
       if (headerMatch) {
         const candidate = headerMatch[1].toUpperCase() as Direction;
         if (!DIRECTION_SET.has(candidate)) {
@@ -563,7 +581,7 @@ export const parseSld = (input: string): ParsedSld => {
       continue;
     }
 
-    const subgraphMatch = trimmed.match(/^subgraph\s+(.+)$/i);
+    const subgraphMatch = /^subgraph\s+(.+)$/i.exec(trimmed);
     if (subgraphMatch) {
       const subgraphStatement: Statement = {
         kind: 'subgraph',
@@ -590,7 +608,9 @@ export const parseSld = (input: string): ParsedSld => {
       if (!lastEndpoint) {
         throw new Error(`Edge continuation "${statementLine}" has no previous endpoint.`);
       }
-      const endpointRef = lastEndpoint.port ? `${lastEndpoint.id}:${lastEndpoint.port}` : lastEndpoint.id;
+      const endpointRef = lastEndpoint.port
+        ? `${lastEndpoint.id}:${lastEndpoint.port}`
+        : lastEndpoint.id;
       statementLine = `${endpointRef} ${statementLine}`;
     }
 
@@ -639,7 +659,10 @@ const parseAtssConfig = (meta: Metadata | undefined): Required<AtssConfig> => {
   const explicitBypassNorm = isTruthy(meta?.bypass_norm);
   const explicitBypassEmer = isTruthy(meta?.bypass_emer);
 
-  const defaultsByProfile: Record<AtssProfile, Pick<Required<AtssConfig>, 'bypass_norm' | 'bypass_emer'>> = {
+  const defaultsByProfile: Record<
+    AtssProfile,
+    Pick<Required<AtssConfig>, 'bypass_norm' | 'bypass_emer'>
+  > = {
     basic: { bypass_norm: false, bypass_emer: false },
     bypass: { bypass_norm: true, bypass_emer: false },
     bypass_iso: { bypass_norm: true, bypass_emer: true },
@@ -674,32 +697,32 @@ export function expandATSS(atss: Node<'ATSS'>): ExpandedGraph {
 
   const edges: Edge[] = [
     {
-      from: { id: normId as NodeId, port: 'out' },
+      from: { id: normId, port: 'out' },
       op: '-->',
-      to: { id: commonBusId as NodeId, port: 'bus' },
+      to: { id: commonBusId, port: 'bus' },
     },
     {
-      from: { id: emerId as NodeId, port: 'out' },
+      from: { id: emerId, port: 'out' },
       op: '-->',
-      to: { id: commonBusId as NodeId, port: 'bus' },
+      to: { id: commonBusId, port: 'bus' },
     },
   ];
 
   if (config.out_breaker) {
     nodes.push(makeBreakerNode(outId, `${atss.id} Out`));
     edges.push({
-      from: { id: commonBusId as NodeId, port: 'bus' },
+      from: { id: commonBusId, port: 'bus' },
       op: '-->',
-      to: { id: outId as NodeId, port: 'in' },
+      to: { id: outId, port: 'in' },
     });
   }
 
   if (config.bypass_norm) {
     nodes.push(makeBreakerNode(bypassNormId, `${atss.id} Bypass Normal`));
     edges.push({
-      from: { id: bypassNormId as NodeId, port: 'out' },
+      from: { id: bypassNormId, port: 'out' },
       op: '-.->',
-      to: { id: commonBusId as NodeId, port: 'bus' },
+      to: { id: commonBusId, port: 'bus' },
       meta: { state: 'NO' },
     });
   }
@@ -707,19 +730,19 @@ export function expandATSS(atss: Node<'ATSS'>): ExpandedGraph {
   if (config.bypass_emer) {
     nodes.push(makeBreakerNode(bypassEmerId, `${atss.id} Bypass Emergency`));
     edges.push({
-      from: { id: bypassEmerId as NodeId, port: 'out' },
+      from: { id: bypassEmerId, port: 'out' },
       op: '-.->',
-      to: { id: commonBusId as NodeId, port: 'bus' },
+      to: { id: commonBusId, port: 'bus' },
       meta: { state: 'NO' },
     });
   }
 
   const portMap: Record<string, Endpoint> = {
-    [`${atss.id}:norm`]: { id: normId as NodeId, port: 'in' },
-    [`${atss.id}:emer`]: { id: emerId as NodeId, port: 'in' },
+    [`${atss.id}:norm`]: { id: normId, port: 'in' },
+    [`${atss.id}:emer`]: { id: emerId, port: 'in' },
     [`${atss.id}:load`]: config.out_breaker
-      ? { id: outId as NodeId, port: 'out' }
-      : { id: commonBusId as NodeId, port: 'bus' },
+      ? { id: outId, port: 'out' }
+      : { id: commonBusId, port: 'bus' },
   };
 
   return { nodes, edges, portMap };
@@ -745,19 +768,19 @@ const expandSTSS = (stss: Node<'STSS'>): AssemblyExpansion => {
 
   const edges: Edge[] = [
     {
-      from: { id: srcA as NodeId, port: 'out' },
+      from: { id: srcA, port: 'out' },
       op: '-->',
-      to: { id: common as NodeId, port: 'bus' },
+      to: { id: common, port: 'bus' },
     },
     {
-      from: { id: srcB as NodeId, port: 'out' },
+      from: { id: srcB, port: 'out' },
       op: '-->',
-      to: { id: common as NodeId, port: 'bus' },
+      to: { id: common, port: 'bus' },
     },
     {
-      from: { id: common as NodeId, port: 'bus' },
+      from: { id: common, port: 'bus' },
       op: '-->',
-      to: { id: out as NodeId, port: 'in' },
+      to: { id: out, port: 'in' },
     },
   ];
 
@@ -766,9 +789,9 @@ const expandSTSS = (stss: Node<'STSS'>): AssemblyExpansion => {
     nodes,
     edges,
     portMap: {
-      [`${stss.id}:srcA`]: { id: srcA as NodeId, port: 'in' },
-      [`${stss.id}:srcB`]: { id: srcB as NodeId, port: 'in' },
-      [`${stss.id}:load`]: { id: out as NodeId, port: 'out' },
+      [`${stss.id}:srcA`]: { id: srcA, port: 'in' },
+      [`${stss.id}:srcB`]: { id: srcB, port: 'in' },
+      [`${stss.id}:load`]: { id: out, port: 'out' },
     },
     requiredIds: [srcA, srcB, common],
   };
@@ -787,14 +810,14 @@ const expandUPSS = (upss: Node<'UPSS'>): AssemblyExpansion => {
 
   const edges: Edge[] = [
     {
-      from: { id: inBreaker as NodeId, port: 'out' },
+      from: { id: inBreaker, port: 'out' },
       op: '-->',
-      to: { id: internalBus as NodeId, port: 'bus' },
+      to: { id: internalBus, port: 'bus' },
     },
     {
-      from: { id: internalBus as NodeId, port: 'bus' },
+      from: { id: internalBus, port: 'bus' },
       op: '-->',
-      to: { id: outBreaker as NodeId, port: 'in' },
+      to: { id: outBreaker, port: 'in' },
     },
   ];
 
@@ -803,8 +826,8 @@ const expandUPSS = (upss: Node<'UPSS'>): AssemblyExpansion => {
     nodes,
     edges,
     portMap: {
-      [`${upss.id}:in`]: { id: inBreaker as NodeId, port: 'in' },
-      [`${upss.id}:out`]: { id: outBreaker as NodeId, port: 'out' },
+      [`${upss.id}:in`]: { id: inBreaker, port: 'in' },
+      [`${upss.id}:out`]: { id: outBreaker, port: 'out' },
     },
     requiredIds: [inBreaker, internalBus, outBreaker],
   };
@@ -903,7 +926,10 @@ export const expandAssemblies = (parsed: ParsedSld): ExpandedSld => {
   };
 };
 
-type DegreeCount = { in: number; out: number };
+interface DegreeCount {
+  in: number;
+  out: number;
+}
 
 const ensureDegreeEntry = (degrees: Map<string, DegreeCount>, nodeId: string) => {
   if (!degrees.has(nodeId)) {
@@ -912,7 +938,7 @@ const ensureDegreeEntry = (degrees: Map<string, DegreeCount>, nodeId: string) =>
   return degrees.get(nodeId)!;
 };
 
-const directedConnectionsForEdge = (edge: Edge): Array<[Endpoint, Endpoint]> => {
+const directedConnectionsForEdge = (edge: Edge): [Endpoint, Endpoint][] => {
   if (DIRECTIONAL_OPS.has(edge.op)) {
     return [[edge.from, edge.to]];
   }
@@ -1025,7 +1051,9 @@ export const validateExpandedGraph = (expanded: ExpandedSld) => {
       throw new Error(`Node "${node.id}" violates single-point rule (out_degree=${degree.out}).`);
     }
     if (!isBus && (degree.in > 1 || degree.out > 1)) {
-      throw new Error(`Branching is only allowed on BUS nodes. Node "${node.id}" is ${node.category}.`);
+      throw new Error(
+        `Branching is only allowed on BUS nodes. Node "${node.id}" is ${node.category}.`
+      );
     }
     if (node.category === 'LOD' && degree.out > 0) {
       throw new Error(`Load "${node.id}" cannot have outgoing power connections.`);
@@ -1039,18 +1067,69 @@ export const validateExpandedGraph = (expanded: ExpandedSld) => {
   validateNoUnintendedParalleling(nodeById, expanded.edges);
 };
 
-const sanitizeNodeLabel = (label: string) => label.replace(/\]/g, ')');
+const sanitizeNodeLabel = (label: string) => label.replace(/]/g, ')');
 const sanitizeEdgeLabel = (label: string) => label.replace(/\|/g, '/');
+const escapeYamlQuoted = (value: string) =>
+  value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+
+const getSymbolSpec = (node: Node) => {
+  const code = parseCodeFromId(node.id);
+  return (
+    SLD_SYMBOL_SPECS[code] ?? {
+      icon: `sld:${code.toLowerCase()}`,
+      w: 72,
+      h: 72,
+      pos: 'b',
+      className: 'sld_inl',
+      category: 'INL',
+    }
+  );
+};
+
+const getNodeLabel = (node: Node) => {
+  if (node.label && node.label.trim().length > 0) {
+    return `${node.id} ${node.label.trim()}`;
+  }
+  return node.id;
+};
 
 export const toFlowchartText = (expanded: ExpandedSld) => {
   const lines: string[] = [`flowchart ${expanded.direction}`];
 
   const sortedNodes = [...expanded.nodes].sort((left, right) => left.id.localeCompare(right.id));
+  const classMembers = new Map<string, string[]>();
+  const allNodeIds: string[] = [];
+
   for (const node of sortedNodes) {
-    if (node.label) {
-      lines.push(`${node.id}[${sanitizeNodeLabel(node.label)}]`);
-    } else {
-      lines.push(node.id);
+    const spec = getSymbolSpec(node);
+    const label = escapeYamlQuoted(sanitizeNodeLabel(getNodeLabel(node)));
+    lines.push(
+      `${node.id}@{ icon: "${spec.icon}", label: "${label}", h: ${spec.h}, w: ${spec.w}, pos: "${spec.pos}" }`
+    );
+    allNodeIds.push(node.id);
+
+    const members = classMembers.get(spec.className) ?? [];
+    members.push(node.id);
+    classMembers.set(spec.className, members);
+  }
+
+  lines.push('classDef sld_node fill:none,font-family:Arial,font-size:12px,font-weight:500;');
+  lines.push('classDef sld_src stroke:#0f4c81,color:#0f4c81,fill:none,stroke-width:2.2px;');
+  lines.push(
+    'classDef sld_bus stroke:#111111,color:#111111,fill:none,stroke-width:2.8px,font-weight:600;'
+  );
+  lines.push('classDef sld_inl stroke:#1f2933,color:#1f2933,fill:none,stroke-width:2.2px;');
+  lines.push('classDef sld_lod stroke:#3f3f46,color:#3f3f46,fill:none,stroke-width:2.2px;');
+  lines.push('classDef sld_asm stroke:#7a2e00,color:#7a2e00,fill:none,stroke-width:2.2px;');
+  lines.push('linkStyle default stroke:#1f2933,stroke-width:2.2px;');
+
+  if (allNodeIds.length > 0) {
+    lines.push(`class ${allNodeIds.join(',')} sld_node;`);
+  }
+
+  for (const [className, members] of classMembers.entries()) {
+    if (members.length > 0) {
+      lines.push(`class ${members.join(',')} ${className};`);
     }
   }
 
