@@ -1,15 +1,16 @@
 import { CoreCanvas } from "./diagJS/core/canvas";
-import { NodeTemplate } from "./diagJS/core/node";
-import Konva from "konva";
+import { buildElectricalSLD } from "./examples/electricalSLD";
 
-// 캔버스 초기화
+// Canvas sized for full building electrical SLD (high voltage → panels/MCC → loads)
 const canvas = new CoreCanvas("testDiv", {
-  width: 1000,
-  height: 800,
-  maxWidth: 1500,
-  maxHeight: 1200,
-  useGrid: true,
+  width: 1200,
+  height: 900,
+  maxWidth: 800,
+  maxHeight: 550,
 });
+
+// Build extensive building electrical distribution single-line diagram
+buildElectricalSLD(canvas);
 
 // // 커스텀 노드 템플릿 생성
 // const diamondTemplate = new NodeTemplate();
