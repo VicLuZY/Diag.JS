@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
-<circle cx="8" cy="48" r="2.15" fill="currentColor" stroke="none"/><circle cx="88" cy="48" r="2.15" fill="currentColor" stroke="none"/><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-<line x1="10" y1="48" x2="86" y2="48" stroke-width="5.6"/>
-<line x1="40" y1="37" x2="40" y2="59"/>
-<line x1="56" y1="37" x2="56" y2="59"/>
-<rect x="24" y="22" width="40" height="16" rx="2"/><path d="M44 22v16M34 22v16M54 22v16"/><path d="M44 42l-6 8h6l-4 8 10-12h-6l4-4z"/></g>
-</svg>

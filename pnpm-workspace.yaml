@@ -1,5 +1,0 @@
-packages:
-  - 'packages/*'
-  - 'packages/mermaid/src/docs'
-  - 'packages/mermaid/src/vitepress'
-  - 'tests/*'
