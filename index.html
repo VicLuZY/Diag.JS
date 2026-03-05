@@ -142,17 +142,17 @@
     </div>
 
     <script type="module">
-      import { renderSvg } from './src/index.js?v=2';
+      import { renderSvg } from './src/index.js?v=3';
 
       const sldExample = `title "Cooling loop"
-node P1 "Primary pump"
+node P1 "Primary pump" symbol pump
 param P1 power 5.5kW
 param P1 head 12m
 param P1 rpm 2900
-node HX "Heat exchanger"
+node HX "Heat exchanger" symbol heat_exchanger
 param HX type plate
 param HX duty 120kW
-node T1 "Buffer tank"
+node T1 "Buffer tank" symbol tank
 param T1 volume 500L
 param T1 temp 45°C
 edge P1 HX "flow"

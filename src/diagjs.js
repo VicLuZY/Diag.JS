@@ -1,6 +1,7 @@
 const NODE_ID_RE = '[A-Za-z][A-Za-z0-9_-]*';
+const SYMBOL_RE = '[A-Za-z][A-Za-z0-9_-]*';
 const TITLE_RE = new RegExp(`^title\\s+"([^"]+)"$`);
-const NODE_RE = new RegExp(`^node\\s+(${NODE_ID_RE})\\s+"([^"]+)"$`);
+const NODE_RE = new RegExp(`^node\\s+(${NODE_ID_RE})\\s+"([^"]+)"(?:\\s+symbol\\s+(${SYMBOL_RE}))?$`);
 const EDGE_RE = new RegExp(`^edge\\s+(${NODE_ID_RE})\\s+(${NODE_ID_RE})(?:\\s+"([^"]+)")?$`);
 // SLD equipment parameter: param NODE_ID KEY "value" or param NODE_ID KEY value
 const PARAM_RE = new RegExp(`^param\\s+(${NODE_ID_RE})\\s+([A-Za-z][A-Za-z0-9_-]*)\\s+(?:"([^"]*)"|(\\S+))$`);
@@ -16,6 +17,56 @@ function escapeXml(text) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+/** Returns SVG fragment for an SLD-style device symbol inside box (x, y, w, h). */
+function getSymbolSvg(symbolType, x, y, w, h) {
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const stroke = '#334155';
+  const fill = '#e2e8f0';
+  const norm = (s) => (s ?? symbolType).toLowerCase().replace(/-/g, '_');
+
+  switch (norm(symbolType)) {
+    case 'pump': {
+      const r = Math.min(w, h) * 0.32;
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>
+  <path d="M ${cx - r * 0.6} ${cy} L ${cx + r * 0.6} ${cy}" stroke="${stroke}" stroke-width="1.5" fill="none"/>
+  <path d="M ${cx + r * 0.35} ${cy - r * 0.35} L ${cx + r * 0.6} ${cy} L ${cx + r * 0.35} ${cy + r * 0.35}" stroke="${stroke}" stroke-width="1.5" fill="none"/>`;
+    }
+    case 'heat_exchanger':
+    case 'hx': {
+      const pad = Math.min(w, h) * 0.15;
+      const x1 = x + pad;
+      const x2 = x + w - pad;
+      const y1 = y + pad;
+      const y2 = y + h - pad;
+      return `<rect x="${x1}" y="${y1}" width="${x2 - x1}" height="${y2 - y1}" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>
+  <path d="M ${x1} ${y1} L ${x2} ${y2} M ${x2} ${y1} L ${x1} ${y2}" stroke="${stroke}" stroke-width="1.2" fill="none"/>`;
+    }
+    case 'tank': {
+      const r = Math.min(w, h) * 0.35;
+      const top = cy - r;
+      const bottom = cy + r;
+      return `<ellipse cx="${cx}" cy="${top}" rx="${r}" ry="${r * 0.4}" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>
+  <path d="M ${cx - r} ${top} L ${cx - r} ${bottom} M ${cx + r} ${top} L ${cx + r} ${bottom}" stroke="${stroke}" stroke-width="1.5" fill="none"/>
+  <ellipse cx="${cx}" cy="${bottom}" rx="${r}" ry="${r * 0.4}" fill="none" stroke="${stroke}" stroke-width="1.5"/>`;
+    }
+    case 'valve': {
+      const r = Math.min(w, h) * 0.28;
+      const dx = r * 0.9;
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>
+  <path d="M ${cx - dx} ${cy} L ${cx + dx} ${cy}" stroke="${stroke}" stroke-width="1.5" fill="none"/>
+  <path d="M ${cx} ${cy - dx} L ${cx} ${cy + dx}" stroke="${stroke}" stroke-width="1.5" fill="none"/>`;
+    }
+    case 'motor': {
+      const r = Math.min(w, h) * 0.32;
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>
+  <text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="${Math.floor(r)}" font-weight="bold" fill="${stroke}">M</text>`;
+    }
+    default:
+      return null;
+  }
 }
 
 export function parseDiagram(source) {
@@ -54,6 +105,7 @@ export function parseDiagram(source) {
         type: 'NodeDeclaration',
         id: nodeMatch[1],
         label: nodeMatch[2],
+        symbol: nodeMatch[3] ?? null,
         line: lineNumber,
       });
       continue;
@@ -107,7 +159,7 @@ export function compileDiagram(ast) {
       if (nodes.has(statement.id)) {
         throw new SyntaxError(`Duplicate node id "${statement.id}" at line ${statement.line}.`);
       }
-      nodes.set(statement.id, { id: statement.id, label: statement.label, params: {} });
+      nodes.set(statement.id, { id: statement.id, label: statement.label, symbol: statement.symbol ?? null, params: {} });
       continue;
     }
 
@@ -188,6 +240,7 @@ function layoutDiagram(compiled, options = {}) {
     (max, node) => Math.max(max, node.width + paramGap + node.paramBlockWidth),
     widestNode
   );
+  const laneSpacing = 28;
   const edgeLaneX = nodeX + widestRow + 96;
   const map = new Map(measured.map((node) => [node.id, node]));
 
@@ -195,7 +248,7 @@ function layoutDiagram(compiled, options = {}) {
     const from = map.get(edge.from);
     const to = map.get(edge.to);
     const fromOutX = from.x + from.width + from.paramBlockWidth + paramGap;
-    const laneX = edgeLaneX + (index % 3) * 26;
+    const laneX = edgeLaneX + index * laneSpacing;
 
     return {
       ...edge,
@@ -207,7 +260,7 @@ function layoutDiagram(compiled, options = {}) {
     };
   });
 
-  const width = edgeLaneX + 140;
+  const width = edgeLaneX + (compiled.edges.length > 0 ? compiled.edges.length * laneSpacing : 0) + 140;
   const lastNode = measured[measured.length - 1];
   const rowHeight = lastNode ? lastNode.blockHeight : nodeHeight;
   const height = lastNode ? lastNode.y + rowHeight + margin : margin * 2;
@@ -259,10 +312,15 @@ function renderCompiledSvg(compiled, options) {
         paramEntries.length === 0
           ? ''
           : `<rect x="${paramX}" y="${node.y}" width="${node.paramBlockWidth}" height="${node.paramBlockHeight}" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1"/>`;
+      const symbolSvg = node.symbol ? getSymbolSvg(node.symbol, node.x, node.y, node.width, node.height) : null;
+      const nodeBody = symbolSvg
+        ? `${symbolSvg}
+  <text x="${node.x + node.width / 2}" y="${node.y + node.height - 8}" text-anchor="middle" font-family="ui-sans-serif, system-ui" font-size="11" fill="#0f172a">${escapeXml(node.label)}</text>`
+        : `<rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="10" fill="#e2e8f0" stroke="#334155" stroke-width="1.5"/>
+  <text x="${node.x + node.width / 2}" y="${node.y + node.height / 2 + 5}" text-anchor="middle" font-family="ui-sans-serif, system-ui" font-size="14" fill="#0f172a">${escapeXml(node.label)}</text>`;
       return `
 <g data-id="${escapeXml(node.id)}">
-  <rect x="${node.x}" y="${node.y}" width="${node.width}" height="${node.height}" rx="10" fill="#e2e8f0" stroke="#334155" stroke-width="1.5"/>
-  <text x="${node.x + node.width / 2}" y="${node.y + node.height / 2 + 5}" text-anchor="middle" font-family="ui-sans-serif, system-ui" font-size="14" fill="#0f172a">${escapeXml(node.label)}</text>
+  ${nodeBody}
   ${paramRect}
   ${paramLines}
 </g>`;
