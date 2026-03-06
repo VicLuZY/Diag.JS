@@ -88,17 +88,34 @@ const proofListEl = document.getElementById('proofList');
 const diagramTitleEl = document.getElementById('diagramTitle');
 const diagramNoteEl = document.getElementById('diagramNote');
 const diagramEl = document.getElementById('activeDiagram');
+const diagramViewportEl = document.getElementById('diagramViewport');
 const sourceTitleEl = document.getElementById('sourceTitle');
 const sourceCodeEl = document.querySelector('#sourceCode code');
 const footerVersionEl = document.getElementById('footerVersion');
 const saveSvgButton = document.getElementById('saveActiveSvg');
 const savePngButton = document.getElementById('saveActivePng');
+const zoomValueEl = document.getElementById('diagramZoomValue');
+const zoomOutButton = document.getElementById('zoomOutDiagram');
+const zoomInButton = document.getElementById('zoomInDiagram');
+const zoomActualButton = document.getElementById('zoomActualDiagram');
+const zoomFitButton = document.getElementById('zoomFitDiagram');
 
 const metricElements = Array.from({ length: 4 }, (_, index) => ({
   label: document.querySelector<HTMLElement>(`[data-metric-label="${index}"]`),
   value: document.querySelector<HTMLElement>(`[data-metric-value="${index}"]`),
   note: document.querySelector<HTMLElement>(`[data-metric-note="${index}"]`),
 }));
+
+const ZOOM_STEP = 1.2;
+const MIN_ZOOM_MULTIPLIER = 0.1;
+const MAX_ZOOM_MULTIPLIER = 16;
+
+const diagramZoomState = {
+  naturalWidth: 0,
+  naturalHeight: 0,
+  fitScale: 1,
+  zoomMultiplier: 1,
+};
 
 const showcases: ShowcaseDefinition[] = [
   {
@@ -473,6 +490,8 @@ let activeShowcaseId = showcases[0]?.id ?? 'electrical';
 
 wireTabs();
 wireDownloadButtons();
+wireZoomButtons();
+observeDiagramViewport();
 renderFooterVersion();
 activateShowcase(resolveInitialShowcaseId(), false);
 window.addEventListener('hashchange', () => {
@@ -528,6 +547,7 @@ function activateShowcase(showcaseId: string, syncHash: boolean): void {
 
     activeSummaryEl.textContent = showcase.summary(rendered.layout);
     diagramEl.innerHTML = rendered.svg;
+    resetDiagramZoom();
     detailListEl.replaceChildren(...showcase.details.map((detail) => createDetailItem(labelMap.get(detail.id) ?? detail.id, detail.detail)));
     tagGroupAListEl.replaceChildren(...showcase.tagGroupA.resolve(rendered.layout).map(createTag));
     tagGroupBListEl.replaceChildren(...showcase.tagGroupB.resolve(rendered.layout).map(createTag));
@@ -542,6 +562,7 @@ function activateShowcase(showcaseId: string, syncHash: boolean): void {
     libraryTagListEl.replaceChildren(...showcase.libraryTags.map(createTag));
     proofListEl.replaceChildren(...showcase.proofPoints.map(createBulletItem));
     renderError(diagramEl, error);
+    clearDiagramZoom();
     clearMetrics();
   }
 }
@@ -618,6 +639,65 @@ function wireDownloadButtons(): void {
   });
 }
 
+function wireZoomButtons(): void {
+  zoomOutButton?.addEventListener('click', () => {
+    adjustDiagramZoom(1 / ZOOM_STEP);
+  });
+
+  zoomInButton?.addEventListener('click', () => {
+    adjustDiagramZoom(ZOOM_STEP);
+  });
+
+  zoomActualButton?.addEventListener('click', () => {
+    if (diagramZoomState.fitScale > 0) {
+      setDiagramZoomMultiplier(1 / diagramZoomState.fitScale, { recenter: true });
+    }
+  });
+
+  zoomFitButton?.addEventListener('click', () => {
+    resetDiagramZoom();
+  });
+
+  diagramViewportEl?.addEventListener(
+    'wheel',
+    (event) => {
+      if (!(event.ctrlKey || event.metaKey) || !diagramEl?.querySelector('svg')) {
+        return;
+      }
+
+      event.preventDefault();
+      const rect = diagramViewportEl.getBoundingClientRect();
+      adjustDiagramZoom(event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP, {
+        anchorX: diagramViewportEl.scrollLeft + event.clientX - rect.left,
+        anchorY: diagramViewportEl.scrollTop + event.clientY - rect.top,
+      });
+    },
+    { passive: false },
+  );
+}
+
+function observeDiagramViewport(): void {
+  if (!diagramViewportEl) {
+    return;
+  }
+
+  if (typeof ResizeObserver === 'function') {
+    const observer = new ResizeObserver(() => {
+      if (diagramEl?.querySelector('svg')) {
+        refreshDiagramZoom(false);
+      }
+    });
+    observer.observe(diagramViewportEl);
+    return;
+  }
+
+  window.addEventListener('resize', () => {
+    if (diagramEl?.querySelector('svg')) {
+      refreshDiagramZoom(false);
+    }
+  });
+}
+
 async function saveDiagramSvg(containerId: string, fileName: string): Promise<void> {
   const markup = getSerializedSvg(containerId);
   if (!markup) {
@@ -670,6 +750,8 @@ function getSerializedSvg(containerId: string): string | null {
   const clone = svg.cloneNode(true) as SVGElement;
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+  clone.style.removeProperty('width');
+  clone.style.removeProperty('height');
   return new XMLSerializer().serializeToString(clone);
 }
 
@@ -713,6 +795,160 @@ function createTag(text: string): HTMLSpanElement {
 function renderError(target: HTMLElement, error: unknown): void {
   const message = error instanceof Error ? error.message : String(error);
   target.innerHTML = `<p style="color:#b91c1c; padding:1rem;">Render error: ${message}</p>`;
+}
+
+function resetDiagramZoom(): void {
+  diagramZoomState.zoomMultiplier = 1;
+  refreshDiagramZoom(true);
+}
+
+function refreshDiagramZoom(recenter: boolean): void {
+  const svg = diagramEl?.querySelector<SVGSVGElement>('svg');
+  if (!svg || !diagramViewportEl || !diagramEl) {
+    clearDiagramZoom();
+    return;
+  }
+
+  const naturalWidth = getSvgLength(svg, 'width') ?? svg.viewBox.baseVal.width;
+  const naturalHeight = getSvgLength(svg, 'height') ?? svg.viewBox.baseVal.height;
+  if (!naturalWidth || !naturalHeight) {
+    clearDiagramZoom();
+    return;
+  }
+
+  const previousScale = getDiagramScale();
+  const { width: viewportWidth, height: viewportHeight } = getDiagramViewportSize();
+  const fitScale = Math.min(viewportWidth / naturalWidth, viewportHeight / naturalHeight);
+
+  diagramZoomState.naturalWidth = naturalWidth;
+  diagramZoomState.naturalHeight = naturalHeight;
+  diagramZoomState.fitScale = Number.isFinite(fitScale) && fitScale > 0 ? fitScale : 1;
+
+  if (recenter) {
+    diagramZoomState.zoomMultiplier = 1;
+  } else {
+    diagramZoomState.zoomMultiplier = clamp(diagramZoomState.zoomMultiplier, MIN_ZOOM_MULTIPLIER, MAX_ZOOM_MULTIPLIER);
+  }
+
+  applyDiagramZoom(previousScale, { recenter });
+}
+
+function adjustDiagramZoom(factor: number, anchor?: { anchorX: number; anchorY: number }): void {
+  setDiagramZoomMultiplier(diagramZoomState.zoomMultiplier * factor, anchor);
+}
+
+function setDiagramZoomMultiplier(nextMultiplier: number, options: { anchorX?: number; anchorY?: number; recenter?: boolean } = {}): void {
+  if (!diagramEl?.querySelector('svg')) {
+    return;
+  }
+
+  const previousScale = getDiagramScale();
+  diagramZoomState.zoomMultiplier = clamp(nextMultiplier, MIN_ZOOM_MULTIPLIER, MAX_ZOOM_MULTIPLIER);
+  applyDiagramZoom(previousScale, options);
+}
+
+function applyDiagramZoom(previousScale: number, options: { anchorX?: number; anchorY?: number; recenter?: boolean } = {}): void {
+  const svg = diagramEl?.querySelector<SVGSVGElement>('svg');
+  if (!svg || !diagramViewportEl || !diagramEl || !diagramZoomState.naturalWidth || !diagramZoomState.naturalHeight) {
+    clearDiagramZoom();
+    return;
+  }
+
+  const scale = getDiagramScale();
+  const scaledWidth = diagramZoomState.naturalWidth * scale;
+  const scaledHeight = diagramZoomState.naturalHeight * scale;
+
+  diagramEl.style.width = `${scaledWidth}px`;
+  diagramEl.style.height = `${scaledHeight}px`;
+  svg.style.width = `${scaledWidth}px`;
+  svg.style.height = `${scaledHeight}px`;
+  updateZoomReadout(scale);
+  setZoomControlsEnabled(true);
+
+  window.requestAnimationFrame(() => {
+    if (!diagramViewportEl) {
+      return;
+    }
+
+    if (options.recenter) {
+      diagramViewportEl.scrollLeft = 0;
+      diagramViewportEl.scrollTop = 0;
+      return;
+    }
+
+    const anchorX = options.anchorX ?? diagramViewportEl.scrollLeft + diagramViewportEl.clientWidth / 2;
+    const anchorY = options.anchorY ?? diagramViewportEl.scrollTop + diagramViewportEl.clientHeight / 2;
+    const previousWidth = diagramZoomState.naturalWidth * previousScale;
+    const previousHeight = diagramZoomState.naturalHeight * previousScale;
+    const relativeX = previousWidth > 0 ? anchorX / previousWidth : 0.5;
+    const relativeY = previousHeight > 0 ? anchorY / previousHeight : 0.5;
+
+    diagramViewportEl.scrollLeft = Math.max(0, scaledWidth * relativeX - diagramViewportEl.clientWidth / 2);
+    diagramViewportEl.scrollTop = Math.max(0, scaledHeight * relativeY - diagramViewportEl.clientHeight / 2);
+  });
+}
+
+function clearDiagramZoom(): void {
+  diagramZoomState.naturalWidth = 0;
+  diagramZoomState.naturalHeight = 0;
+  diagramZoomState.fitScale = 1;
+  diagramZoomState.zoomMultiplier = 1;
+
+  if (diagramEl) {
+    diagramEl.style.width = '';
+    diagramEl.style.height = '';
+  }
+
+  const svg = diagramEl?.querySelector<SVGSVGElement>('svg');
+  if (svg) {
+    svg.style.width = '';
+    svg.style.height = '';
+  }
+
+  updateZoomReadout(0);
+  setZoomControlsEnabled(false);
+}
+
+function getDiagramScale(): number {
+  return diagramZoomState.fitScale * diagramZoomState.zoomMultiplier;
+}
+
+function getDiagramViewportSize(): { width: number; height: number } {
+  if (!diagramViewportEl) {
+    return { width: 1, height: 1 };
+  }
+
+  const styles = window.getComputedStyle(diagramViewportEl);
+  const width = diagramViewportEl.clientWidth - parseFloat(styles.paddingLeft) - parseFloat(styles.paddingRight);
+  const height = diagramViewportEl.clientHeight - parseFloat(styles.paddingTop) - parseFloat(styles.paddingBottom);
+
+  return {
+    width: Math.max(1, width),
+    height: Math.max(1, height),
+  };
+}
+
+function getSvgLength(svg: SVGSVGElement, attribute: 'width' | 'height'): number | null {
+  const value = Number.parseFloat(svg.getAttribute(attribute) ?? '');
+  return Number.isFinite(value) ? value : null;
+}
+
+function updateZoomReadout(scale: number): void {
+  if (zoomValueEl) {
+    zoomValueEl.textContent = scale > 0 ? `${Math.round(scale * 100)}%` : 'No SVG';
+  }
+}
+
+function setZoomControlsEnabled(enabled: boolean): void {
+  [zoomOutButton, zoomInButton, zoomActualButton, zoomFitButton].forEach((button) => {
+    if (button instanceof HTMLButtonElement) {
+      button.disabled = !enabled;
+    }
+  });
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
 }
 
 function isLaneLayout(layout: DemoLayout): layout is LaneDiagramLayout {
