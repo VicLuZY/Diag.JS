@@ -581,7 +581,7 @@
     </div>
 
     <script type="module">
-      import { compileDiagram, parseDiagram, renderSvg } from './src/index.js?v=5';
+      import { compileDiagram, parseDiagram, renderSvg } from './src/index.js?v=6';
 
       const extensiveSldExample = `title "Building Electrical Distribution — Single-Line Diagram"
 node UTIL "Utility Service" symbol utility
@@ -596,6 +596,10 @@ param MSB ampacity 3000A
 node XFLP "XFMR-LP" symbol transformer
 param XFLP rating 300kVA
 param XFLP secondary 208Y/120V
+node LSB "Lighting and Receptacle Switchboard" symbol switchboard
+param LSB system 208Y/120V
+param LSB main breaker
+param LSB ampacity 1200A
 node LP1 "LP-1" symbol panel
 param LP1 system 208Y/120V
 param LP1 ampacity 225A
@@ -656,9 +660,10 @@ edge MSB MCC1 "mechanical"
 edge MSB MCC2 "basement"
 edge MSB DP1 "distribution"
 edge MSB DP2 "mechanical panel"
-edge XFLP LP1 "lighting branch"
-edge XFLP LP2 "lighting branch"
-edge XFLP RP1 "receptacle branch"
+edge XFLP LSB "secondary main"
+edge LSB LP1 "lighting branch"
+edge LSB LP2 "lighting branch"
+edge LSB RP1 "receptacle branch"
 edge LP1 LGT_W "branch ccts"
 edge LP1 LGT_C "branch ccts"
 edge LP2 LGT_E "branch ccts"
@@ -677,6 +682,7 @@ edge DP1 ELV "feeder"
 edge DP2 KIT "feeder"`;
 
       const primaryFeeders = [
+        { id: 'LSB', detail: '208Y/120 V switchboard distributing the transformer secondary to downstream panels.' },
         { id: 'XFLP', detail: 'Step-down transformer serving lighting and receptacle distribution.' },
         { id: 'MCC1', detail: 'Primary mechanical motor control center.' },
         { id: 'MCC2', detail: 'Basement mechanical motor control center.' },
@@ -704,7 +710,7 @@ edge DP2 KIT "feeder"`;
         setStat('feeders', primaryFeeders.length);
         setStat('voltages', voltages.length);
 
-        summaryEl.textContent = `${compiled.nodes.length} nodes and ${compiled.edges.length} orthogonal wire runs are placed as a left-to-right distribution hierarchy, with each device terminating feeders on opposite sides and carrying device-specific SVG drafting.`;
+        summaryEl.textContent = `${compiled.nodes.length} nodes and ${compiled.edges.length} orthogonal wire runs are placed as a left-to-right distribution hierarchy, with source, assembly, and load terminal behavior reflected directly in the SVG device elevations.`;
 
         branchListEl.replaceChildren(...primaryFeeders.map((branch) => {
           const item = document.createElement('li');

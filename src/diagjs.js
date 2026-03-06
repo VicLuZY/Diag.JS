@@ -51,8 +51,8 @@ const SYMBOL_ALIASES = {
 const SYMBOL_LIBRARY = {
   utility: {
     typeLabel: 'UTILITY',
-    width: 170,
-    height: 102,
+    width: 184,
+    height: 108,
     fill: '#fff7ef',
     innerFill: '#fffdf9',
     stroke: '#87512e',
@@ -61,8 +61,8 @@ const SYMBOL_LIBRARY = {
   },
   transformer: {
     typeLabel: 'XFMR',
-    width: 182,
-    height: 104,
+    width: 194,
+    height: 112,
     fill: '#fff9ef',
     innerFill: '#fffef9',
     stroke: '#8a6436',
@@ -71,8 +71,8 @@ const SYMBOL_LIBRARY = {
   },
   switchboard: {
     typeLabel: 'SWBD',
-    width: 212,
-    height: 106,
+    width: 242,
+    height: 148,
     fill: '#f4f9fc',
     innerFill: '#fbfdfe',
     stroke: '#294560',
@@ -81,8 +81,8 @@ const SYMBOL_LIBRARY = {
   },
   panel: {
     typeLabel: 'PANEL',
-    width: 182,
-    height: 102,
+    width: 210,
+    height: 138,
     fill: '#f7fbfe',
     innerFill: '#fbfdfe',
     stroke: '#43647c',
@@ -91,8 +91,8 @@ const SYMBOL_LIBRARY = {
   },
   mcc: {
     typeLabel: 'MCC',
-    width: 194,
-    height: 104,
+    width: 236,
+    height: 150,
     fill: '#f4faf7',
     innerFill: '#fbfefc',
     stroke: '#2f6251',
@@ -391,6 +391,8 @@ const SYMBOL_LIBRARY = {
   },
 };
 
+const ASSEMBLY_SYMBOLS = new Set(['switchboard', 'panel', 'mcc']);
+
 function syntaxError(lineNumber, line) {
   return new SyntaxError(`Invalid statement at line ${lineNumber}: ${line}`);
 }
@@ -531,6 +533,41 @@ function resolveGlyph(symbolType, spec = getSymbolSpec(symbolType)) {
   return spec.glyph ?? symbol;
 }
 
+function getPresentationKind(symbol) {
+  return ASSEMBLY_SYMBOLS.has(symbol) ? 'assembly' : 'device';
+}
+
+function getNodeRole(symbol, incomingCount, outgoingCount) {
+  if (ASSEMBLY_SYMBOLS.has(symbol) && outgoingCount > 0) {
+    return 'assembly';
+  }
+  if (incomingCount === 0 && outgoingCount > 0) {
+    return 'source';
+  }
+  if (incomingCount > 0 && outgoingCount === 0) {
+    return 'load';
+  }
+  if (incomingCount > 0 && outgoingCount > 0) {
+    return 'inline';
+  }
+  return 'isolated';
+}
+
+function getMainDeviceType(node) {
+  const configured = String(node.params?.main ?? node.params?.input ?? '').toLowerCase();
+  if (configured.includes('lug') || configured.includes('mlo')) {
+    return 'mlo';
+  }
+  if (configured.includes('fuse')) {
+    return 'fuse';
+  }
+  if (configured.includes('switch')) {
+    return 'disconnect';
+  }
+
+  return node.symbol === 'panel' ? 'mlo' : 'breaker';
+}
+
 function wrapText(text, maxChars) {
   const words = String(text).trim().split(/\s+/).filter(Boolean);
   if (!words.length) {
@@ -599,16 +636,28 @@ function renderTextLines(lines, x, y, options = {}) {
     .join('');
 }
 
-function getNodeVisual(node) {
+function getNodeVisual(node, topology = {}) {
+  const incomingCount = topology.incomingCount ?? 0;
+  const outgoingCount = topology.outgoingCount ?? 0;
   const symbol = inferSymbol(node);
   const spec = getSymbolSpec(symbol);
   const glyph = resolveGlyph(symbol, spec);
+  const presentation = getPresentationKind(symbol);
+  const role = getNodeRole(symbol, incomingCount, outgoingCount);
   const labelLines = wrapText(node.label, spec.labelChars);
   const labelFontSize = 13;
   const labelLineHeight = 15;
   const labelHeight = labelLines.length * labelLineHeight;
+  const labelBlockHeight = labelHeight + 14;
+  const hasInputTerminal = incomingCount > 0;
+  const hasOutputTerminal = outgoingCount > 0;
+  const connectionRows = Math.max(1, incomingCount, outgoingCount);
+  const assemblyCoreHeight = presentation === 'assembly' ? Math.max(64, connectionRows * 20 + 18) : 0;
   const deviceWidth = spec.width;
-  const deviceHeight = Math.max(spec.height, 74 + labelHeight);
+  const deviceHeight =
+    presentation === 'assembly'
+      ? Math.max(spec.height, 52 + assemblyCoreHeight + labelBlockHeight)
+      : Math.max(spec.height, 74 + labelHeight, 72 + connectionRows * 6 + labelHeight);
   const paramLines = Object.entries(node.params ?? {}).map(([key, value]) => `${key}: ${value}`);
   const paramWidth = paramLines.length
     ? Math.max(deviceWidth - 20, ...paramLines.map((line) => line.length * 6.4 + 24))
@@ -622,9 +671,18 @@ function getNodeVisual(node) {
     symbol,
     glyph,
     spec,
+    presentation,
+    role,
+    incomingCount,
+    outgoingCount,
+    hasInputTerminal,
+    hasOutputTerminal,
+    connectionRows,
+    mainDeviceType: getMainDeviceType({ ...node, symbol }),
     labelLines,
     labelFontSize,
     labelLineHeight,
+    labelBlockHeight,
     paramLines,
     deviceWidth,
     deviceHeight,
@@ -645,20 +703,31 @@ function renderSymbolGlyph(symbolType, x, y, width, height, spec) {
 
   switch (symbol) {
     case 'utility': {
-      const r = Math.min(width, height) * 0.3;
-      return `<circle cx="${cx}" cy="${cy + 2}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
-        <path d="M ${cx - r * 0.18} ${cy - r * 0.82} L ${cx + r * 0.14} ${cy - r * 0.1} L ${cx - r * 0.02} ${cy - r * 0.1} L ${cx + r * 0.22} ${cy + r * 0.74}" fill="none" stroke="${accent}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M ${cx - r * 0.72} ${cy - r * 1.15} Q ${cx} ${cy - r * 1.55} ${cx + r * 0.72} ${cy - r * 1.15}" fill="none" stroke="${accent}" stroke-width="1.4" stroke-linecap="round"/>
-        <path d="M ${x + 14} ${cy + 2} H ${cx - r}" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linecap="round"/>
-        <path d="M ${cx + r} ${cy + 2} H ${x + width - 14}" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linecap="round"/>`;
+      const bodyX = x + 18;
+      const bodyY = y + 12;
+      const bodyW = width - 36;
+      const bodyH = height - 24;
+      return `<rect x="${bodyX}" y="${bodyY}" width="${bodyW}" height="${bodyH}" rx="12" fill="${fill}" stroke="${stroke}" stroke-width="1.8"/>
+        <rect x="${bodyX + 10}" y="${bodyY + 10}" width="${bodyW - 20}" height="${bodyH - 20}" rx="8" fill="#ffffff" stroke="#d3dde3" stroke-width="1"/>
+        <path d="M ${bodyX + 16} ${bodyY + bodyH - 18} H ${bodyX + bodyW - 16}" fill="none" stroke="${accent}" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M ${bodyX + bodyW * 0.28} ${bodyY} V ${bodyY - 10} M ${bodyX + bodyW * 0.5} ${bodyY} V ${bodyY - 14} M ${bodyX + bodyW * 0.72} ${bodyY} V ${bodyY - 10}" fill="none" stroke="${accent}" stroke-width="1.4" stroke-linecap="round"/>
+        <circle cx="${bodyX + bodyW * 0.28}" cy="${bodyY - 10}" r="3" fill="#ffffff" stroke="${accent}" stroke-width="1.1"/>
+        <circle cx="${bodyX + bodyW * 0.5}" cy="${bodyY - 14}" r="3" fill="#ffffff" stroke="${accent}" stroke-width="1.1"/>
+        <circle cx="${bodyX + bodyW * 0.72}" cy="${bodyY - 10}" r="3" fill="#ffffff" stroke="${accent}" stroke-width="1.1"/>
+        <path d="M ${cx} ${bodyY + bodyH} V ${bodyY + bodyH + 10} M ${cx - 16} ${bodyY + bodyH + 10} H ${cx + 16} M ${cx - 11} ${bodyY + bodyH + 16} H ${cx + 11} M ${cx - 6} ${bodyY + bodyH + 22} H ${cx + 6}" fill="none" stroke="${accent}" stroke-width="1.2" stroke-linecap="round"/>`;
     }
     case 'transformer': {
-      const r = Math.min(width, height) * 0.22;
-      return `<path d="M ${x + 12} ${cy} H ${cx - r * 1.9}" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linecap="round"/>
-        <circle cx="${cx - r * 0.95}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
-        <circle cx="${cx + r * 0.95}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
-        <path d="M ${cx - r * 0.2} ${cy} H ${cx + r * 0.2}" fill="none" stroke="${accent}" stroke-width="1.6" stroke-linecap="round"/>
-        <path d="M ${cx + r * 1.9} ${cy} H ${x + width - 12}" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linecap="round"/>`;
+      const bodyX = x + 20;
+      const bodyY = y + 10;
+      const bodyW = width - 40;
+      const bodyH = height - 20;
+      return `<rect x="${bodyX}" y="${bodyY}" width="${bodyW}" height="${bodyH}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="1.8"/>
+        <rect x="${bodyX + 10}" y="${bodyY + 10}" width="${bodyW - 20}" height="${bodyH - 20}" rx="7" fill="#ffffff" stroke="#d3dde3" stroke-width="1"/>
+        <path d="M ${bodyX + 18} ${bodyY + 20} H ${bodyX + bodyW - 18} M ${bodyX + 18} ${bodyY + 28} H ${bodyX + bodyW - 18} M ${bodyX + 18} ${bodyY + 36} H ${bodyX + bodyW - 18} M ${bodyX + 18} ${bodyY + 44} H ${bodyX + bodyW - 18}" fill="none" stroke="#b3c2cb" stroke-width="1" stroke-linecap="round"/>
+        <path d="M ${bodyX + bodyW * 0.34} ${bodyY} V ${bodyY - 10} M ${bodyX + bodyW * 0.66} ${bodyY} V ${bodyY - 10}" fill="none" stroke="${accent}" stroke-width="1.4" stroke-linecap="round"/>
+        <circle cx="${bodyX + bodyW * 0.34}" cy="${bodyY - 10}" r="3" fill="#ffffff" stroke="${accent}" stroke-width="1.1"/>
+        <circle cx="${bodyX + bodyW * 0.66}" cy="${bodyY - 10}" r="3" fill="#ffffff" stroke="${accent}" stroke-width="1.1"/>
+        <rect x="${bodyX + 16}" y="${bodyY + bodyH - 18}" width="${bodyW - 32}" height="8" rx="3" fill="#eef2f5" stroke="#c7d2d9" stroke-width="0.8"/>`;
     }
     case 'switchboard': {
       const bodyX = x + 18;
@@ -1161,7 +1230,15 @@ function layoutDiagram(compiled, options = {}) {
   const rootGap = options.rootGap ?? 70;
 
   const graph = buildGraph(compiled);
-  const nodesById = new Map(compiled.nodes.map((node) => [node.id, getNodeVisual(node)]));
+  const nodesById = new Map(
+    compiled.nodes.map((node) => [
+      node.id,
+      getNodeVisual(node, {
+        incomingCount: (graph.incoming.get(node.id) ?? []).length,
+        outgoingCount: (graph.outgoing.get(node.id) ?? []).length,
+      }),
+    ]),
+  );
   const maxLevel = Math.max(...compiled.nodes.map((node) => graph.level.get(node.id) ?? 0), 0);
   const levelWidths = Array.from({ length: maxLevel + 1 }, () => 0);
 
@@ -1230,9 +1307,9 @@ function layoutDiagram(compiled, options = {}) {
         assignNode(childId, cursor);
         const child = nodesById.get(childId);
         if (firstChildCenterY === null) {
-          firstChildCenterY = child.portY;
+          firstChildCenterY = child.anchorY;
         }
-        lastChildCenterY = child.portY;
+        lastChildCenterY = child.anchorY;
         cursor += getSubtreeHeight(childId) + rowGap;
       }
     }
@@ -1246,9 +1323,7 @@ function layoutDiagram(compiled, options = {}) {
 
     node.deviceY = node.blockY;
     node.paramY = node.paramHeight ? node.deviceY + node.deviceHeight + 14 : null;
-    node.portY = node.deviceY + node.deviceHeight / 2;
-    node.portInX = node.deviceX;
-    node.portOutX = node.deviceX + node.deviceWidth;
+    node.anchorY = node.deviceY + node.deviceHeight / 2;
   }
 
   const assigned = new Set();
@@ -1282,42 +1357,94 @@ function layoutDiagram(compiled, options = {}) {
     }
   }
 
-  const outgoingSlots = new Map();
-  for (const [sourceId, edges] of graph.outgoing.entries()) {
-    const ordered = [...edges].sort((left, right) => {
+  function spreadPorts(count, centerY, topY, bottomY, gap = 18) {
+    if (count === 0) {
+      return [];
+    }
+    if (count === 1) {
+      return [centerY];
+    }
+
+    const totalSpan = gap * (count - 1);
+    const start = clamp(centerY - totalSpan / 2, topY, bottomY - totalSpan);
+    return Array.from({ length: count }, (_, index) => start + index * gap);
+  }
+
+  function getTerminalBand(node) {
+    const top = node.presentation === 'assembly' ? node.deviceY + 58 : node.deviceY + 42;
+    const bottom = node.deviceY + node.deviceHeight - node.labelBlockHeight - 18;
+    const safeBottom = Math.max(top, bottom);
+
+    return { top, bottom: safeBottom };
+  }
+
+  for (const node of nodesById.values()) {
+    const terminalBand = getTerminalBand(node);
+    const orderedInputs = [...(graph.incoming.get(node.id) ?? [])].sort((left, right) => {
+      const leftSource = nodesById.get(left.from);
+      const rightSource = nodesById.get(right.from);
+      return leftSource.anchorY - rightSource.anchorY;
+    });
+    const orderedOutputs = [...(graph.outgoing.get(node.id) ?? [])].sort((left, right) => {
       const leftTarget = nodesById.get(left.to);
       const rightTarget = nodesById.get(right.to);
-      return leftTarget.portY - rightTarget.portY;
+      return leftTarget.anchorY - rightTarget.anchorY;
     });
 
-    ordered.forEach((edge, index) => {
-      outgoingSlots.set(`${sourceId}->${edge.to}`, index);
-    });
+    node.inputTerminalX = node.deviceX;
+    node.outputTerminalX = node.deviceX + node.deviceWidth;
+    node.inputPorts = orderedInputs.map((edge, index) => ({
+      key: `${edge.from}->${edge.to}`,
+      x: node.inputTerminalX,
+      y: spreadPorts(orderedInputs.length, node.anchorY, terminalBand.top, terminalBand.bottom)[index],
+      index,
+    }));
+    node.outputPorts = orderedOutputs.map((edge, index) => ({
+      key: `${edge.from}->${edge.to}`,
+      x: node.outputTerminalX,
+      y: spreadPorts(orderedOutputs.length, node.anchorY, terminalBand.top, terminalBand.bottom)[index],
+      index,
+    }));
+    node.inputPortMap = new Map(node.inputPorts.map((port) => [port.key, port]));
+    node.outputPortMap = new Map(node.outputPorts.map((port) => [port.key, port]));
   }
 
   const edgeLayouts = compiled.edges.map((edge) => {
     const from = nodesById.get(edge.from);
     const to = nodesById.get(edge.to);
-    const siblingCount = (graph.outgoing.get(edge.from) ?? []).length;
-    const slot = outgoingSlots.get(`${edge.from}->${edge.to}`) ?? 0;
-    const availableGap = Math.max(28, to.portInX - from.portOutX - 48);
+    const key = `${edge.from}->${edge.to}`;
+    const fromPort = from.outputPortMap.get(key) ?? {
+      x: from.outputTerminalX,
+      y: from.anchorY,
+      index: 0,
+    };
+    const toPort = to.inputPortMap.get(key) ?? {
+      x: to.inputTerminalX,
+      y: to.anchorY,
+      index: 0,
+    };
+    const siblingCount = from.outputPorts.length;
+    const slot = fromPort.index;
+    const availableGap = Math.max(28, toPort.x - fromPort.x - 48);
     const slotStep = siblingCount > 1 ? Math.min(18, availableGap / (siblingCount + 1)) : 0;
-    let laneX = from.portOutX + 28 + slot * slotStep;
-    const maxLaneX = to.portInX - 28;
+    let laneX = fromPort.x + 28 + slot * slotStep;
+    const maxLaneX = toPort.x - 28;
 
     if (laneX > maxLaneX) {
-      laneX = from.portOutX + Math.max(18, (to.portInX - from.portOutX) / 2);
+      laneX = fromPort.x + Math.max(18, (toPort.x - fromPort.x) / 2);
     }
 
-    const path = `M ${from.portOutX} ${from.portY} H ${laneX} V ${to.portY} H ${to.portInX}`;
+    const path = `M ${fromPort.x} ${fromPort.y} H ${laneX} V ${toPort.y} H ${toPort.x}`;
 
     return {
       ...edge,
       from,
       to,
+      fromPort,
+      toPort,
       path,
-      labelX: Math.min(laneX + 8, to.portInX - 52),
-      labelY: from.portY === to.portY ? from.portY - 8 : (from.portY + to.portY) / 2 - 6,
+      labelX: Math.min(laneX + 8, toPort.x - 52),
+      labelY: fromPort.y === toPort.y ? fromPort.y - 8 : (fromPort.y + toPort.y) / 2 - 6,
     };
   });
 
@@ -1333,17 +1460,166 @@ function layoutDiagram(compiled, options = {}) {
   };
 }
 
+function renderTerminalSets(node, bodyX, bodyWidth) {
+  const inputTerminalBlocks = node.inputPorts
+    .map(
+      (port) => `<path d="M ${node.inputTerminalX} ${port.y} H ${bodyX}" fill="none" stroke="${node.spec.stroke}" stroke-width="1.8" stroke-linecap="round"/>
+        <circle data-terminal-side="input" cx="${node.inputTerminalX}" cy="${port.y}" r="3.2" fill="#ffffff" stroke="${node.spec.stroke}" stroke-width="1.5"/>`,
+    )
+    .join('');
+  const outputTerminalBlocks = node.outputPorts
+    .map(
+      (port) => `<path d="M ${bodyX + bodyWidth} ${port.y} H ${node.outputTerminalX}" fill="none" stroke="${node.spec.stroke}" stroke-width="1.8" stroke-linecap="round"/>
+        <circle data-terminal-side="output" cx="${node.outputTerminalX}" cy="${port.y}" r="3.2" fill="#ffffff" stroke="${node.spec.stroke}" stroke-width="1.5"/>`,
+    )
+    .join('');
+
+  return `${inputTerminalBlocks}${outputTerminalBlocks}`;
+}
+
+function renderDeviceBlock(kind, x, y, width, height, stroke, accent) {
+  if (kind === 'mlo') {
+    const lugY = y + height / 2;
+    return `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="6" fill="#ffffff" stroke="${stroke}" stroke-width="1.3"/>
+      <path d="M ${x + 8} ${lugY} H ${x + width - 8}" fill="none" stroke="${accent}" stroke-width="1.4" stroke-linecap="round"/>
+      <circle cx="${x + width * 0.32}" cy="${lugY}" r="2.4" fill="${accent}"/>
+      <circle cx="${x + width * 0.5}" cy="${lugY}" r="2.4" fill="${accent}"/>
+      <circle cx="${x + width * 0.68}" cy="${lugY}" r="2.4" fill="${accent}"/>`;
+  }
+
+  if (kind === 'fuse') {
+    return `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="6" fill="#ffffff" stroke="${stroke}" stroke-width="1.3"/>
+      <path d="M ${x + 8} ${y + height / 2} H ${x + width - 8}" fill="none" stroke="${accent}" stroke-width="1.4" stroke-linecap="round"/>
+      <rect x="${x + width * 0.22}" y="${y + 6}" width="${width * 0.18}" height="${height - 12}" rx="3" fill="#eef2f5" stroke="${accent}" stroke-width="1.1"/>
+      <rect x="${x + width * 0.6}" y="${y + 6}" width="${width * 0.18}" height="${height - 12}" rx="3" fill="#eef2f5" stroke="${accent}" stroke-width="1.1"/>`;
+  }
+
+  if (kind === 'disconnect') {
+    return `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="6" fill="#ffffff" stroke="${stroke}" stroke-width="1.3"/>
+      <circle cx="${x + width * 0.28}" cy="${y + height / 2}" r="3" fill="#ffffff" stroke="${stroke}" stroke-width="1.2"/>
+      <circle cx="${x + width * 0.72}" cy="${y + height / 2}" r="3" fill="#ffffff" stroke="${stroke}" stroke-width="1.2"/>
+      <path d="M ${x + width * 0.3} ${y + height / 2} L ${x + width * 0.66} ${y + height * 0.28}" fill="none" stroke="${accent}" stroke-width="1.7" stroke-linecap="round"/>`;
+  }
+
+  return `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="6" fill="#ffffff" stroke="${stroke}" stroke-width="1.3"/>
+    <rect x="${x + 6}" y="${y + 6}" width="${width - 12}" height="${Math.max(10, height - 14)}" rx="3" fill="#eef3f6" stroke="#bfd0da" stroke-width="0.9"/>
+    <path d="M ${x + width * 0.58} ${y + 5} V ${y + height - 5}" fill="none" stroke="${accent}" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="${x + width * 0.34}" cy="${y + height * 0.34}" r="2" fill="${accent}"/>`;
+}
+
+function renderMccBucket(x, y, width, height, stroke, accent) {
+  return `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="5" fill="#ffffff" stroke="${stroke}" stroke-width="1.2"/>
+    <rect x="${x + 6}" y="${y + 4}" width="${width - 18}" height="${height - 8}" rx="3" fill="#eff4f6" stroke="#c3d0d8" stroke-width="0.9"/>
+    <circle cx="${x + width - 8}" cy="${y + height / 2}" r="2.4" fill="${accent}"/>
+    <path d="M ${x + width - 14} ${y + height / 2} H ${x + width - 4}" fill="none" stroke="${accent}" stroke-width="1.3" stroke-linecap="round"/>
+    <circle cx="${x + 10}" cy="${y + height / 2}" r="1.8" fill="${accent}"/>`;
+}
+
+function renderAssemblyFace(node, bodyX, bodyY, bodyWidth, bodyHeight) {
+  const coreX = bodyX + 12;
+  const coreY = bodyY + 36;
+  const coreWidth = bodyWidth - 24;
+  const coreHeight = Math.max(56, bodyHeight - 52 - node.labelBlockHeight);
+  const stroke = node.spec.stroke;
+  const accent = node.spec.accent;
+  const shellFill = node.spec.innerFill;
+  const copperFill = '#cb8c33';
+  const mainSectionWidth = node.symbol === 'panel' ? 46 : 54;
+  const outputSectionWidth = node.symbol === 'mcc' ? 66 : 58;
+  const busX = coreX + mainSectionWidth + 12;
+  const busWidth = Math.max(44, coreWidth - mainSectionWidth - outputSectionWidth - 24);
+  const outputX = busX + busWidth + 12;
+  const busHeight = node.symbol === 'panel' ? 10 : 12;
+  const busY = coreY + coreHeight / 2 - busHeight / 2;
+  const sectionCount = Math.max(3, Math.ceil(Math.max(1, node.outputPorts.length) / 2) + 1);
+  const sectionWidth = coreWidth / sectionCount;
+
+  let shellDetails = '';
+  if (node.symbol === 'switchboard') {
+    shellDetails = Array.from({ length: sectionCount - 1 }, (_, index) => {
+      const seamX = coreX + sectionWidth * (index + 1);
+      return `<path d="M ${seamX} ${coreY + 4} V ${coreY + coreHeight - 4}" fill="none" stroke="#b9c8d1" stroke-width="1"/>
+        <circle cx="${seamX - 8}" cy="${coreY + 18}" r="1.8" fill="#9cb0bc"/>
+        <circle cx="${seamX - 8}" cy="${coreY + coreHeight - 18}" r="1.8" fill="#9cb0bc"/>`;
+    }).join('');
+    shellDetails += `<rect x="${coreX + 8}" y="${coreY + 8}" width="${sectionWidth - 16}" height="16" rx="4" fill="#eef3f6" stroke="#c2d0d8" stroke-width="0.9"/>
+      <rect x="${coreX + 8}" y="${coreY + coreHeight - 22}" width="${coreWidth - 16}" height="10" rx="3" fill="#edf2f4" stroke="#cad4db" stroke-width="0.8"/>`;
+  } else if (node.symbol === 'panel') {
+    shellDetails = `<rect x="${coreX + 6}" y="${coreY + 6}" width="${coreWidth - 12}" height="${coreHeight - 12}" rx="8" fill="#fbfdfe" stroke="#cad6dd" stroke-width="1"/>
+      <path d="M ${coreX + coreWidth * 0.5} ${coreY + 10} V ${coreY + coreHeight - 10}" fill="none" stroke="#c8d4db" stroke-width="1"/>
+      <circle cx="${coreX + coreWidth - 18}" cy="${coreY + coreHeight / 2}" r="2.2" fill="${accent}"/>`;
+  } else {
+    shellDetails = Array.from({ length: Math.max(2, Math.ceil(Math.max(1, node.outputPorts.length) / 2)) }, (_, index) => {
+      const bucketTop = coreY + 10 + index * 26;
+      return bucketTop + 18 > coreY + coreHeight - 10
+        ? ''
+        : `<rect x="${coreX + 8}" y="${bucketTop}" width="${coreWidth - 16}" height="20" rx="4" fill="#fbfdfe" stroke="#cad6dd" stroke-width="0.9"/>`;
+    }).join('');
+    shellDetails += `<rect x="${coreX + 8}" y="${coreY + 6}" width="${coreWidth - 16}" height="14" rx="4" fill="#eef3f6" stroke="#c2d0d8" stroke-width="0.9"/>`;
+  }
+
+  const inputBlocks = node.inputPorts
+    .map((port, index) => {
+      const singleInput = node.inputPorts.length === 1;
+      const blockHeight = singleInput ? Math.min(42, coreHeight - 14) : 18;
+      const blockY = singleInput ? busY - blockHeight / 2 : port.y - blockHeight / 2;
+      const blockX = coreX + 4;
+      const blockWidth = mainSectionWidth - 8;
+      const internalY = singleInput ? busY + busHeight / 2 : port.y;
+      return `${renderDeviceBlock(node.mainDeviceType, blockX, blockY, blockWidth, blockHeight, stroke, accent)}
+        <path d="M ${bodyX} ${port.y} H ${blockX}" fill="none" stroke="${stroke}" stroke-width="1.3" stroke-linecap="round"/>
+        <path d="M ${blockX + blockWidth} ${internalY} H ${busX}" fill="none" stroke="${accent}" stroke-width="1.4" stroke-linecap="round"/>`;
+    })
+    .join('');
+
+  const outputBlocks = node.outputPorts
+    .map((port, index) => {
+      const blockHeight = node.symbol === 'mcc' ? 22 : 16;
+      const blockY = port.y - blockHeight / 2;
+      const blockX = outputX;
+      const blockWidth = Math.max(30, bodyX + bodyWidth - outputX - 6);
+      const branchKind = node.symbol === 'panel' ? 'breaker' : index % 3 === 2 ? 'fuse' : 'breaker';
+      const blockSvg =
+        node.symbol === 'mcc'
+          ? renderMccBucket(blockX, blockY, blockWidth, blockHeight, stroke, accent)
+          : renderDeviceBlock(branchKind, blockX, blockY, blockWidth, blockHeight, stroke, accent);
+      return `${blockSvg}
+        <path d="M ${busX + busWidth} ${port.y} H ${blockX}" fill="none" stroke="${accent}" stroke-width="1.4" stroke-linecap="round"/>
+        <path d="M ${blockX + blockWidth} ${port.y} H ${bodyX + bodyWidth}" fill="none" stroke="${stroke}" stroke-width="1.3" stroke-linecap="round"/>`;
+    })
+    .join('');
+
+  const busConnections = [...node.inputPorts, ...node.outputPorts]
+    .map((port, index) => `<rect x="${busX + 6 + index * Math.max(8, (busWidth - 20) / Math.max(1, node.inputPorts.length + node.outputPorts.length - 1))}" y="${busY - 2}" width="6" height="${busHeight + 4}" rx="2" fill="#e2b36a" opacity="0.72"/>`)
+    .join('');
+
+  return `<rect x="${coreX}" y="${coreY}" width="${coreWidth}" height="${coreHeight}" rx="12" fill="${shellFill}" stroke="#d0d9df" stroke-width="1"/>
+    ${shellDetails}
+    <rect data-bus="true" x="${busX}" y="${busY}" width="${busWidth}" height="${busHeight}" rx="3" fill="${copperFill}" stroke="#98611d" stroke-width="1"/>
+    <path d="M ${busX + 4} ${busY + 3} H ${busX + busWidth - 4}" fill="none" stroke="#f6d59f" stroke-width="1.1" stroke-linecap="round" opacity="0.85"/>
+    ${busConnections}
+    ${inputBlocks}
+    ${outputBlocks}`;
+}
+
 function renderNodeBlock(node) {
-  const portPad = 18;
-  const bodyX = node.deviceX + portPad;
+  const leftPad = node.hasInputTerminal ? 18 : 8;
+  const rightPad = node.hasOutputTerminal ? 18 : 8;
+  const bodyX = node.deviceX + leftPad;
   const bodyY = node.deviceY;
-  const bodyWidth = node.deviceWidth - portPad * 2;
+  const bodyWidth = node.deviceWidth - leftPad - rightPad;
   const bodyHeight = node.deviceHeight;
   const chipWidth = Math.max(54, node.spec.typeLabel.length * 7 + 18);
-  const symbolPanelX = bodyX + 12;
-  const symbolPanelY = bodyY + 28;
+  const visualX = bodyX + 12;
+  const visualY = bodyY + (node.presentation === 'assembly' ? 36 : 28);
   const labelStartY = bodyY + bodyHeight - 18 - (node.labelLines.length - 1) * node.labelLineHeight;
-  const symbolPanelHeight = Math.max(28, labelStartY - symbolPanelY - 10);
+  const visualHeight = Math.max(28, labelStartY - visualY - 10);
+  const terminalBlocks = renderTerminalSets(node, bodyX, bodyWidth);
+  const deviceFace =
+    node.presentation === 'assembly'
+      ? renderAssemblyFace(node, bodyX, bodyY, bodyWidth, bodyHeight)
+      : `<rect x="${visualX}" y="${visualY}" width="${bodyWidth - 24}" height="${visualHeight}" rx="12" fill="${node.spec.innerFill}" stroke="#d7e0e6" stroke-width="1"/>
+        ${renderSymbolGlyph(node.glyph, visualX, visualY, bodyWidth - 24, visualHeight, node.spec)}`;
   const paramRect = node.paramHeight
     ? `<rect x="${node.paramX}" y="${node.paramY}" width="${node.paramWidth}" height="${node.paramHeight}" rx="12" fill="#ffffff" stroke="#c4d0d8" stroke-width="1.1"/>
       ${renderTextLines(node.paramLines, node.paramX + 12, node.paramY + 16, {
@@ -1355,17 +1631,14 @@ function renderNodeBlock(node) {
       })}`
     : '';
 
-  return `<g data-id="${escapeXml(node.id)}" data-symbol="${escapeXml(node.symbol)}" data-glyph="${escapeXml(node.glyph)}" data-level="${node.level}">
-    <path d="M ${node.portInX} ${node.portY} H ${bodyX}" fill="none" stroke="${node.spec.stroke}" stroke-width="1.8" stroke-linecap="round"/>
-    <path d="M ${bodyX + bodyWidth} ${node.portY} H ${node.portOutX}" fill="none" stroke="${node.spec.stroke}" stroke-width="1.8" stroke-linecap="round"/>
-    <circle cx="${node.portInX}" cy="${node.portY}" r="3.2" fill="#ffffff" stroke="${node.spec.stroke}" stroke-width="1.5"/>
-    <circle cx="${node.portOutX}" cy="${node.portY}" r="3.2" fill="#ffffff" stroke="${node.spec.stroke}" stroke-width="1.5"/>
+  return `<g data-id="${escapeXml(node.id)}" data-symbol="${escapeXml(node.symbol)}" data-glyph="${escapeXml(node.glyph)}" data-role="${node.role}" data-inputs="${node.incomingCount}" data-outputs="${node.outgoingCount}" data-level="${node.level}">
+    ${terminalBlocks}
     <rect x="${bodyX}" y="${bodyY}" width="${bodyWidth}" height="${bodyHeight}" rx="16" fill="${node.spec.fill}" stroke="${node.spec.stroke}" stroke-width="1.8"/>
+    <rect x="${bodyX + 4}" y="${bodyY + 4}" width="${bodyWidth - 8}" height="${bodyHeight - 8}" rx="13" fill="none" stroke="#ffffff" stroke-opacity="0.5" stroke-width="1"/>
     <rect x="${bodyX + 10}" y="${bodyY + 8}" width="${chipWidth}" height="18" rx="9" fill="#ffffff" stroke="${node.spec.stroke}" stroke-width="1"/>
     <text x="${bodyX + 10 + chipWidth / 2}" y="${bodyY + 21}" text-anchor="middle" font-family="Trebuchet MS, Verdana, sans-serif" font-size="10" font-weight="700" letter-spacing="0.5" fill="${node.spec.accent}">${escapeXml(node.spec.typeLabel)}</text>
     <path d="M ${bodyX + 10} ${bodyY + 32} H ${bodyX + bodyWidth - 10}" fill="none" stroke="#cad6dd" stroke-width="1.1" stroke-linecap="round"/>
-    <rect x="${symbolPanelX}" y="${symbolPanelY}" width="${bodyWidth - 24}" height="${symbolPanelHeight}" rx="12" fill="${node.spec.innerFill}" stroke="#d7e0e6" stroke-width="1"/>
-    ${renderSymbolGlyph(node.glyph, symbolPanelX, symbolPanelY, bodyWidth - 24, symbolPanelHeight, node.spec)}
+    ${deviceFace}
     ${renderTextLines(node.labelLines, bodyX + bodyWidth / 2, labelStartY, {
       fontSize: node.labelFontSize,
       fontWeight: '700',
@@ -1399,7 +1672,7 @@ function renderCompiledSvg(compiled, options) {
   const layout = layoutDiagram(compiled, options);
   const title = compiled.title
     ? `<text x="${layout.width / 2}" y="44" text-anchor="middle" font-family="Georgia, Times New Roman, serif" font-size="20" font-weight="700" fill="#1a2833">${escapeXml(compiled.title)}</text>
-      <text x="${layout.width / 2}" y="64" text-anchor="middle" font-family="Trebuchet MS, Verdana, sans-serif" font-size="11" fill="#637583">Hierarchical single-line arrangement with left/right ports and device-specific symbols</text>`
+      <text x="${layout.width / 2}" y="64" text-anchor="middle" font-family="Trebuchet MS, Verdana, sans-serif" font-size="11" fill="#637583">Hierarchical single-line arrangement with role-aware terminals and assembly-driven device elevations</text>`
     : '';
 
   const edgeBlocks = layout.edges.map(renderEdge).join('');

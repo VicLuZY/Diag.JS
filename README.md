@@ -30,7 +30,7 @@ edge msb pump1 "mechanical"
 edge msb rtu1 "roof load"
 ```
 
-DiagJS includes dedicated SVG symbols for common power and building-distribution devices such as transformers, switchboards, panels, MCCs, pumps, fans, HVAC units, RTUs, boilers, elevators, and more. When no explicit `symbol` is provided, the renderer infers a matching device family from the node id and label where possible.
+DiagJS includes dedicated SVG symbols for common power and building-distribution devices such as transformers, switchboards, panels, MCCs, pumps, fans, HVAC units, RTUs, boilers, elevators, and more. Assemblies like switchboards, panelboards, and MCCs render as main-device plus bus plus feeder sections, while source and load terminals are suppressed on the impossible side. When no explicit `symbol` is provided, the renderer infers a matching device family from the node id and label where possible.
 
 ## API
 

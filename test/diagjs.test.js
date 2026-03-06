@@ -3,6 +3,16 @@ import assert from 'node:assert/strict';
 
 import { compileDiagram, parseDiagram, renderSvg } from '../src/index.js';
 
+function getNodeBlock(svg, id) {
+  const match = svg.match(new RegExp(`<g data-id="${id}"[\\s\\S]*?<\\/g>`));
+  assert.ok(match, `Missing node block for ${id}`);
+  return match[0];
+}
+
+function countMatches(text, pattern) {
+  return (text.match(pattern) ?? []).length;
+}
+
 test('parseDiagram builds an AST', () => {
   const source = `
     title "Pipeline"
@@ -91,9 +101,9 @@ test('renderSvg lays nodes out hierarchically with level metadata', () => {
     edge b c
   `);
 
-  assert.match(svg, /data-id="a" data-symbol="utility" data-glyph="utility" data-level="0"/);
-  assert.match(svg, /data-id="b" data-symbol="transformer" data-glyph="transformer" data-level="1"/);
-  assert.match(svg, /data-id="c" data-symbol="switchboard" data-glyph="switchboard" data-level="2"/);
+  assert.match(svg, /data-id="a" data-symbol="utility" data-glyph="utility"[^>]*data-level="0"/);
+  assert.match(svg, /data-id="b" data-symbol="transformer" data-glyph="transformer"[^>]*data-level="1"/);
+  assert.match(svg, /data-id="c" data-symbol="switchboard" data-glyph="switchboard"[^>]*data-level="2"/);
 });
 
 test('renderSvg routes connections from the source right side to the target left side', () => {
@@ -201,4 +211,47 @@ test('renderSvg exposes fallback glyphs for unknown symbol types', () => {
 
   assert.match(svg, /data-id="mystery" data-symbol="custom_device" data-glyph="device"/);
   assert.match(svg, />\?</);
+});
+
+test('sources and loads only render the terminal sides they physically support', () => {
+  const svg = renderSvg(`
+    node util "Utility Service" symbol utility
+    node swbd "Main Switchboard" symbol switchboard
+    node load "Pump" symbol pump
+    edge util swbd
+    edge swbd load
+  `);
+
+  const sourceBlock = getNodeBlock(svg, 'util');
+  const assemblyBlock = getNodeBlock(svg, 'swbd');
+  const loadBlock = getNodeBlock(svg, 'load');
+
+  assert.match(sourceBlock, /data-role="source" data-inputs="0" data-outputs="1"/);
+  assert.doesNotMatch(sourceBlock, /data-terminal-side="input"/);
+  assert.match(sourceBlock, /data-terminal-side="output"/);
+
+  assert.match(assemblyBlock, /data-role="assembly" data-inputs="1" data-outputs="1"/);
+  assert.match(assemblyBlock, /data-terminal-side="input"/);
+  assert.match(assemblyBlock, /data-terminal-side="output"/);
+
+  assert.match(loadBlock, /data-role="load" data-inputs="1" data-outputs="0"/);
+  assert.match(loadBlock, /data-terminal-side="input"/);
+  assert.doesNotMatch(loadBlock, /data-terminal-side="output"/);
+});
+
+test('assembly buses and output terminals scale with connected feeders', () => {
+  const svg = renderSvg(`
+    node sw "Distribution Board" symbol switchboard
+    node a "Load A" symbol equipment
+    node b "Load B" symbol equipment
+    node c "Load C" symbol equipment
+    edge sw a
+    edge sw b
+    edge sw c
+  `);
+
+  const assemblyBlock = getNodeBlock(svg, 'sw');
+  assert.match(assemblyBlock, /data-role="assembly" data-inputs="0" data-outputs="3"/);
+  assert.match(assemblyBlock, /data-bus="true"/);
+  assert.equal(countMatches(assemblyBlock, /data-terminal-side="output"/g), 3);
 });
