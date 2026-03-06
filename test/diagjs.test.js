@@ -29,14 +29,16 @@ test('compileDiagram validates edge nodes', () => {
 
 test('renderSvg returns valid svg output', () => {
   const svg = renderSvg(`
-    node draft "Draft"
-    node done "Done"
-    edge draft done "finish"
+    node utility "Utility Service" symbol utility
+    node msb "Main Switchboard" symbol switchboard
+    edge utility msb "service"
   `);
 
   assert.match(svg, /^<svg[\s\S]*<\/svg>$/);
-  assert.match(svg, /data-id="draft"/);
-  assert.match(svg, /marker-end="url\(#arrowhead\)"/);
+  assert.match(svg, /data-id="utility"/);
+  assert.match(svg, /data-symbol="utility"/);
+  assert.match(svg, /data-edge-from="utility" data-edge-to="msb"/);
+  assert.doesNotMatch(svg, /marker-end=/);
 });
 
 test('parseDiagram accepts SLD param statements', () => {
@@ -78,4 +80,36 @@ test('renderSvg includes param labels next to devices', () => {
   `);
   assert.match(svg, /power: 5\.5kW/);
   assert.match(svg, /head: 12m/);
+});
+
+test('renderSvg lays nodes out hierarchically with level metadata', () => {
+  const svg = renderSvg(`
+    node a "Utility Service" symbol utility
+    node b "XFMR-1" symbol transformer
+    node c "MSB-1" symbol switchboard
+    edge a b
+    edge b c
+  `);
+
+  assert.match(svg, /data-id="a" data-symbol="utility" data-level="0"/);
+  assert.match(svg, /data-id="b" data-symbol="transformer" data-level="1"/);
+  assert.match(svg, /data-id="c" data-symbol="switchboard" data-level="2"/);
+});
+
+test('renderSvg routes connections from the source right side to the target left side', () => {
+  const svg = renderSvg(`
+    node a "Utility Service" symbol utility
+    node b "XFMR-1" symbol transformer
+    edge a b
+  `);
+
+  const match = svg.match(/data-edge-from="a" data-edge-to="b">[\s\S]*?<path d="M ([0-9.]+) ([0-9.]+) H ([0-9.]+) V ([0-9.]+) H ([0-9.]+)"/);
+  assert.ok(match);
+
+  const startX = Number(match[1]);
+  const laneX = Number(match[3]);
+  const endX = Number(match[5]);
+
+  assert.ok(startX < laneX);
+  assert.ok(laneX < endX);
 });

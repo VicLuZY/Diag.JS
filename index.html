@@ -355,7 +355,8 @@
 
       #diagram svg {
         display: block;
-        width: 100%;
+        min-width: 100%;
+        max-width: none;
         height: auto;
       }
 
@@ -465,7 +466,7 @@
           <article class="stat-card">
             <span class="stat-label">Orthogonal Edges</span>
             <strong class="stat-value" data-stat="edges">0</strong>
-            <span class="stat-note">unique-lane wire routes through the example</span>
+            <span class="stat-note">hierarchy-routed wire runs through the example</span>
           </article>
           <article class="stat-card">
             <span class="stat-label">Primary Feeders</span>
@@ -512,7 +513,7 @@
               <ul class="list">
                 <li>Extensive SLD content can be authored in the DSL without collapsing into toy examples.</li>
                 <li>Node parameters surface the electrical context directly beside each device.</li>
-                <li>Orthogonal routing stays readable even as feeder count grows.</li>
+                <li>Opposite-side ports and hierarchy spacing keep feeders legible as branches expand.</li>
               </ul>
             </article>
           </aside>
@@ -549,50 +550,50 @@
       import { compileDiagram, parseDiagram, renderSvg } from './src/index.js?v=4';
 
       const extensiveSldExample = `title "Building Electrical Distribution — Single-Line Diagram"
-node UTIL "Utility Service"
+node UTIL "Utility Service" symbol utility
 param UTIL voltage 13.8kV
 param UTIL fault 12kA
-node XFMR1 "XFMR-1"
+node XFMR1 "XFMR-1" symbol transformer
 param XFMR1 rating 1500kVA
 param XFMR1 secondary 480Y/277V
-node MSB "MSB-1"
+node MSB "MSB-1" symbol switchboard
 param MSB type switchboard
 param MSB ampacity 3000A
-node XFLP "XFMR-LP"
+node XFLP "XFMR-LP" symbol transformer
 param XFLP rating 300kVA
 param XFLP secondary 208Y/120V
-node LP1 "LP-1"
+node LP1 "LP-1" symbol panel
 param LP1 system 208Y/120V
 param LP1 ampacity 225A
-node LP2 "LP-2"
+node LP2 "LP-2" symbol panel
 param LP2 system 208Y/120V
 param LP2 ampacity 225A
-node RP1 "RP-1"
+node RP1 "RP-1" symbol panel
 param RP1 system 208Y/120V
 param RP1 ampacity 225A
-node MCC1 "MCC-1"
+node MCC1 "MCC-1" symbol mcc
 param MCC1 system 480V
 param MCC1 duty mechanical
-node MCC2 "MCC-2"
+node MCC2 "MCC-2" symbol mcc
 param MCC2 system 480V
 param MCC2 duty basement
-node DP1 "DP-1"
+node DP1 "DP-1" symbol panel
 param DP1 system 480V
 param DP1 ampacity 400A
-node DP2 "DP-2"
+node DP2 "DP-2" symbol panel
 param DP2 system 480V
 param DP2 ampacity 250A
-node LGT_W "General Lighting"
+node LGT_W "General Lighting" symbol lighting
 param LGT_W panel LP1
-node LGT_C "Corridor Lighting"
+node LGT_C "Corridor Lighting" symbol lighting
 param LGT_C panel LP1
-node LGT_E "Exterior Lighting"
+node LGT_E "Exterior Lighting" symbol lighting
 param LGT_E panel LP2
-node TEN_L "Tenant Lighting"
+node TEN_L "Tenant Lighting" symbol lighting
 param TEN_L panel LP2
-node REC_G "Convenience Receptacles"
+node REC_G "Convenience Receptacles" symbol receptacle
 param REC_G panel RP1
-node IT_O "IT and Office"
+node IT_O "IT and Office" symbol receptacle
 param IT_O panel RP1
 node CH1 "Chiller No. 1" symbol motor
 param CH1 power 200HP
@@ -608,11 +609,11 @@ node CWP "CW Pump" symbol motor
 param CWP power 30HP
 node AHU2 "AHU-2" symbol motor
 param AHU2 power 20HP
-node RTU1 "RTU-1"
+node RTU1 "RTU-1" symbol equipment
 param RTU1 demand 50kVA
-node ELV "Elevator"
+node ELV "Elevator" symbol equipment
 param ELV demand 75kVA
-node KIT "Kitchen HVAC"
+node KIT "Kitchen HVAC" symbol equipment
 param KIT demand 35kVA
 edge UTIL XFMR1 "service"
 edge XFMR1 MSB "main secondary"
@@ -669,7 +670,7 @@ edge DP2 KIT "feeder"`;
         setStat('feeders', primaryFeeders.length);
         setStat('voltages', voltages.length);
 
-        summaryEl.textContent = `${compiled.nodes.length} nodes and ${compiled.edges.length} orthogonal wire runs describe the full service path from utility entrance to branch loads across ${primaryFeeders.length} primary feeders.`;
+        summaryEl.textContent = `${compiled.nodes.length} nodes and ${compiled.edges.length} orthogonal wire runs are placed as a left-to-right distribution hierarchy, with each device terminating feeders on opposite sides and carrying device-specific SVG drafting.`;
 
         branchListEl.replaceChildren(...primaryFeeders.map((branch) => {
           const item = document.createElement('li');
