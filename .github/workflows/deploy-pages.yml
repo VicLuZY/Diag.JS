@@ -32,6 +32,7 @@ jobs:
           mkdir -p _site
           cp index.html _site/
           [ -d src ] && cp -r src _site/ || true
+          [ -d assets ] && cp -r assets _site/ || true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
