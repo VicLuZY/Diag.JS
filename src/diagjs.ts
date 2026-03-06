@@ -143,6 +143,9 @@ interface NodeVisual extends CompiledNode {
   outputPorts?: PortLayout[];
   inputPortMap?: Map<string, PortLayout>;
   outputPortMap?: Map<string, PortLayout>;
+  voltageValue?: number;
+  voltageText?: string | null;
+  voltageStrata: string;
 }
 
 interface EdgeLayout {
@@ -151,17 +154,43 @@ interface EdgeLayout {
   to: NodeVisual;
   fromPort: PortLayout;
   toPort: PortLayout;
+  wire: WireTypeSpec;
   path: string;
   labelX: number;
   labelY: number;
+}
+
+interface VoltageStrataSpec {
+  key: string;
+  label: string;
+  tint: string;
+  stroke: string;
+}
+
+interface VoltageStrataLayout extends VoltageStrataSpec {
+  top: number;
+  bottom: number;
+  height: number;
+}
+
+interface WireTypeSpec {
+  key: string;
+  label: string;
+  stroke: string;
+  width: number;
+  dasharray?: string;
 }
 
 interface DiagramLayout {
   width: number;
   height: number;
   titleOffset: number;
+  legendX: number;
+  legendY: number;
   nodes: NodeVisual[];
   edges: EdgeLayout[];
+  strata: VoltageStrataLayout[];
+  wireTypes: WireTypeSpec[];
 }
 
 const SYMBOL_ALIASES: Record<string, string> = {
@@ -552,6 +581,19 @@ const SYMBOL_LIBRARY: Record<string, SymbolSpec> = {
 
 const ASSEMBLY_SYMBOLS = new Set(['switchboard', 'panel', 'mcc']);
 
+const VOLTAGE_STRATA: VoltageStrataSpec[] = [
+  { key: 'hv', label: 'HV Distribution (25 kV class)', tint: 'rgba(172, 113, 65, 0.12)', stroke: '#9a5f2f' },
+  { key: 'lv600', label: 'LV Distribution (600 V class)', tint: 'rgba(66, 121, 168, 0.11)', stroke: '#3d6f99' },
+  { key: 'lv208', label: 'LV Utilization (208Y/120 V)', tint: 'rgba(100, 126, 92, 0.11)', stroke: '#5e7757' },
+];
+
+const WIRE_TYPES: WireTypeSpec[] = [
+  { key: 'service', label: 'Utility service / feeder', stroke: '#8f4d2b', width: 2.5 },
+  { key: 'feeder', label: 'Distribution feeder', stroke: '#2f5978', width: 2.1 },
+  { key: 'branch', label: 'Branch circuit', stroke: '#4b6f3e', width: 1.6, dasharray: '8 6' },
+  { key: 'control', label: 'Control / signal wiring', stroke: '#6b5b8c', width: 1.4, dasharray: '3 5' },
+];
+
 function syntaxError(lineNumber: number, line: string): SyntaxError {
   return new SyntaxError(`Invalid statement at line ${lineNumber}: ${line}`);
 }
@@ -795,6 +837,62 @@ function renderTextLines(lines: string[], x: number, y: number, options: TextRen
     .join('');
 }
 
+function parseVoltageValue(raw: string | null | undefined): number | null {
+  if (!raw) {
+    return null;
+  }
+  const text = String(raw).toUpperCase();
+  const values = [...text.matchAll(/\d+(?:\.\d+)?/g)].map((match) => Number(match[0]));
+  if (!values.length) {
+    return null;
+  }
+  const maxValue = Math.max(...values);
+  return text.includes('KV') ? maxValue * 1000 : maxValue;
+}
+
+function inferVoltageStrata(symbol: string, params: Record<string, string>, voltageValue: number | null): string {
+  if (voltageValue !== null) {
+    if (voltageValue >= 1000) {
+      return 'hv';
+    }
+    if (voltageValue >= 300) {
+      return 'lv600';
+    }
+    return 'lv208';
+  }
+  if (symbol === 'utility' || symbol === 'transformer') {
+    return 'hv';
+  }
+  if (symbol === 'switchboard' || symbol === 'mcc') {
+    return 'lv600';
+  }
+  if (symbol === 'panel' || symbol === 'lighting' || symbol === 'receptacle') {
+    return 'lv208';
+  }
+  const probe = `${params.system ?? ''} ${params.secondary ?? ''}`.toUpperCase();
+  if (probe.includes('208') || probe.includes('120')) {
+    return 'lv208';
+  }
+  if (probe.includes('600') || probe.includes('480')) {
+    return 'lv600';
+  }
+  return 'lv600';
+}
+
+function inferWireType(edge: CompiledEdge, from: NodeVisual, to: NodeVisual): WireTypeSpec {
+  const probe = `${edge.label ?? ''} ${from.symbol} ${to.symbol}`.toLowerCase();
+  if (probe.includes('control') || probe.includes('signal') || probe.includes('meter')) {
+    return WIRE_TYPES[3];
+  }
+  if (probe.includes('service') || from.symbol === 'utility') {
+    return WIRE_TYPES[0];
+  }
+  if (probe.includes('branch') || to.symbol === 'lighting' || to.symbol === 'receptacle') {
+    return WIRE_TYPES[2];
+  }
+  return WIRE_TYPES[1];
+}
+
 function getNodeVisual(node: CompiledNode, topology: TopologyCounts = {}): NodeVisual {
   const incomingCount = topology.incomingCount ?? 0;
   const outgoingCount = topology.outgoingCount ?? 0;
@@ -824,6 +922,9 @@ function getNodeVisual(node: CompiledNode, topology: TopologyCounts = {}): NodeV
   const paramHeight = paramLines.length ? paramLines.length * 16 + 20 : 0;
   const totalWidth = Math.max(deviceWidth, paramWidth);
   const totalHeight = deviceHeight + (paramHeight ? 14 + paramHeight : 0);
+  const voltageText = node.params?.voltage ?? node.params?.system ?? node.params?.secondary ?? node.params?.primary ?? null;
+  const voltageValue = parseVoltageValue(voltageText);
+  const voltageStrata = inferVoltageStrata(symbol, node.params ?? {}, voltageValue);
 
   return {
     ...node,
@@ -849,6 +950,9 @@ function getNodeVisual(node: CompiledNode, topology: TopologyCounts = {}): NodeV
     paramHeight,
     totalWidth,
     totalHeight,
+    voltageValue,
+    voltageText,
+    voltageStrata,
   };
 }
 
@@ -1596,6 +1700,7 @@ function layoutDiagram(compiled: CompiledDiagram, options: LayoutOptions = {}): 
     }
 
     const path = `M ${fromPort.x} ${fromPort.y} H ${laneX} V ${toPort.y} H ${toPort.x}`;
+    const wire = inferWireType(edge, from, to);
 
     return {
       ...edge,
@@ -1603,21 +1708,37 @@ function layoutDiagram(compiled: CompiledDiagram, options: LayoutOptions = {}): 
       to,
       fromPort,
       toPort,
+      wire,
       path,
       labelX: Math.min(laneX + 8, toPort.x - 52),
       labelY: fromPort.y === toPort.y ? fromPort.y - 8 : (fromPort.y + toPort.y) / 2 - 6,
     };
   });
 
-  const width = xPositions[maxLevel] + levelWidths[maxLevel] + margin;
+  const orderedStrata = VOLTAGE_STRATA.filter((strata) => [...nodesById.values()].some((node) => node.voltageStrata === strata.key));
+  const strataLayouts: VoltageStrataLayout[] = [];
+  for (const strata of orderedStrata) {
+    const strataNodes = [...nodesById.values()].filter((node) => node.voltageStrata === strata.key);
+    const top = Math.min(...strataNodes.map((node) => node.deviceY)) - 18;
+    const bottom = Math.max(...strataNodes.map((node) => (node.paramY ?? node.deviceY) + (node.paramHeight || node.deviceHeight))) + 18;
+    strataLayouts.push({ ...strata, top, bottom, height: Math.max(56, bottom - top) });
+  }
+
+  const legendPad = 270;
+  const width = xPositions[maxLevel] + levelWidths[maxLevel] + margin + legendPad;
   const height = cursor + margin - rootGap;
+  const wireTypes = [...new Map(edgeLayouts.map((edge) => [edge.wire.key, edge.wire])).values()];
 
   return {
     width: Math.max(width, 320),
     height: Math.max(height, 240),
     titleOffset,
+    legendX: Math.max(24, width - 250),
+    legendY: margin + 20,
     nodes: [...nodesById.values()],
     edges: edgeLayouts,
+    strata: strataLayouts,
+    wireTypes,
   };
 }
 
@@ -1810,14 +1931,45 @@ function renderNodeBlock(node: NodeVisual): string {
   </g>`;
 }
 
+function renderVoltageStrataGuide(strata: VoltageStrataLayout, width: number): string {
+  return `<g data-strata="${strata.key}">
+    <rect x="18" y="${strata.top}" width="${width - 290}" height="${strata.height}" rx="20" fill="${strata.tint}" stroke="${strata.stroke}" stroke-opacity="0.2" stroke-width="1.1"/>
+    <text x="36" y="${strata.top + 22}" font-family="Trebuchet MS, Verdana, sans-serif" font-size="11" font-weight="700" fill="${strata.stroke}">${escapeXml(strata.label)}</text>
+  </g>`;
+}
+
+function renderElectricalLegend(layout: DiagramLayout): string {
+  const strataItems = layout.strata
+    .map(
+      (strata, index) => `<rect x="14" y="${34 + index * 20}" width="16" height="10" rx="3" fill="${strata.tint}" stroke="${strata.stroke}" stroke-width="1"/>
+      <text x="38" y="${43 + index * 20}" font-family="Trebuchet MS, Verdana, sans-serif" font-size="11" fill="#385061">${escapeXml(strata.label)}</text>`,
+    )
+    .join('');
+  const wireStart = 40 + layout.strata.length * 20;
+  const wireItems = layout.wireTypes
+    .map(
+      (wire, index) => `<path d="M 14 ${wireStart + index * 20} H 30" fill="none" stroke="${wire.stroke}" stroke-width="${wire.width}"${wire.dasharray ? ` stroke-dasharray="${wire.dasharray}"` : ''}/>
+      <text x="38" y="${wireStart + 4 + index * 20}" font-family="Trebuchet MS, Verdana, sans-serif" font-size="11" fill="#385061">${escapeXml(wire.label)}</text>`,
+    )
+    .join('');
+  const footerY = wireStart + layout.wireTypes.length * 20 + 18;
+  return `<g transform="translate(${layout.legendX}, ${layout.legendY})">
+    <rect x="0" y="0" width="236" height="${Math.max(130, footerY + 34)}" rx="16" fill="#ffffff" stroke="#c9d5db" stroke-width="1.1"/>
+    <text x="16" y="20" font-family="Georgia, Times New Roman, serif" font-size="13" font-weight="700" fill="#234054">Electrical Legend</text>
+    ${strataItems}
+    ${wireItems}
+    <text x="16" y="${footerY}" font-family="Trebuchet MS, Verdana, sans-serif" font-size="10.5" fill="#506474">Nominal design classes: HV 25 kV · LV 600 V · LV 208Y/120 V</text>
+  </g>`;
+}
+
 function renderEdge(edge: EdgeLayout): string {
   const label = edge.label
     ? `<rect x="${edge.labelX - 6}" y="${edge.labelY - 11}" width="${Math.max(44, edge.label.length * 6.7 + 12)}" height="18" rx="9" fill="#fcfcfb" stroke="#d1dae0" stroke-width="0.8"/>
       <text x="${edge.labelX}" y="${edge.labelY + 2}" font-family="Trebuchet MS, Verdana, sans-serif" font-size="11" fill="#425664">${escapeXml(edge.label)}</text>`
     : '';
 
-  return `<g data-edge-from="${escapeXml(edge.from.id)}" data-edge-to="${escapeXml(edge.to.id)}">
-    <path d="${edge.path}" fill="none" stroke="#314e62" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+  return `<g data-edge-from="${escapeXml(edge.from.id)}" data-edge-to="${escapeXml(edge.to.id)}" data-wire-type="${edge.wire.key}">
+    <path d="${edge.path}" fill="none" stroke="${edge.wire.stroke}" stroke-width="${edge.wire.width}"${edge.wire.dasharray ? ` stroke-dasharray="${edge.wire.dasharray}"` : ''} stroke-linecap="round" stroke-linejoin="round"/>
     ${label}
   </g>`;
 }
@@ -1838,13 +1990,17 @@ function renderCompiledSvg(compiled: CompiledDiagram, options: LayoutOptions = {
 
   const edgeBlocks = layout.edges.map(renderEdge).join('');
   const nodeBlocks = layout.nodes.map(renderNodeBlock).join('');
+  const strataBlocks = layout.strata.map((strata) => renderVoltageStrataGuide(strata, layout.width)).join('');
+  const legendBlock = renderElectricalLegend(layout);
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${layout.width}" height="${layout.height}" viewBox="0 0 ${layout.width} ${layout.height}" role="img" aria-label="diagjs diagram">
     <rect x="10" y="10" width="${layout.width - 20}" height="${layout.height - 20}" rx="26" fill="#fcfbf7" stroke="#c7d1d8" stroke-width="1.2"/>
     <rect x="24" y="24" width="${layout.width - 48}" height="${layout.height - 48}" rx="18" fill="none" stroke="#dce3e8" stroke-width="1"/>
     ${title}
+    ${strataBlocks}
     ${edgeBlocks}
     ${nodeBlocks}
+    ${legendBlock}
   </svg>`;
 }
 
