@@ -32,6 +32,19 @@ const SYMBOL_ALIASES = {
   metering: 'meter',
   protection_relay: 'relay',
   hx: 'heat_exchanger',
+  exhaust_fan: 'fan',
+  supply_fan: 'fan',
+  relief_fan: 'fan',
+  air_handler: 'hvac',
+  air_handling_unit: 'hvac',
+  hvac_unit: 'hvac',
+  rtu: 'rtu',
+  rooftop_unit: 'rtu',
+  chlr: 'chiller',
+  boiler_plant: 'boiler',
+  elev: 'elevator',
+  elv: 'elevator',
+  lift: 'elevator',
   load: 'equipment',
 };
 
@@ -226,6 +239,16 @@ const SYMBOL_LIBRARY = {
     accent: '#355268',
     labelChars: 18,
   },
+  chiller: {
+    typeLabel: 'CHLR',
+    width: 170,
+    height: 102,
+    fill: '#f2f8fc',
+    innerFill: '#fbfeff',
+    stroke: '#35607b',
+    accent: '#35607b',
+    labelChars: 17,
+  },
   motor: {
     typeLabel: 'LOAD',
     width: 132,
@@ -276,6 +299,46 @@ const SYMBOL_LIBRARY = {
     accent: '#2f6251',
     labelChars: 16,
   },
+  fan: {
+    typeLabel: 'FAN',
+    width: 138,
+    height: 98,
+    fill: '#f4f9fb',
+    innerFill: '#ffffff',
+    stroke: '#43647c',
+    accent: '#43647c',
+    labelChars: 16,
+  },
+  hvac: {
+    typeLabel: 'HVAC',
+    width: 168,
+    height: 102,
+    fill: '#f5f9fc',
+    innerFill: '#ffffff',
+    stroke: '#3f6178',
+    accent: '#3f6178',
+    labelChars: 18,
+  },
+  rtu: {
+    typeLabel: 'RTU',
+    width: 170,
+    height: 102,
+    fill: '#f5f9fc',
+    innerFill: '#ffffff',
+    stroke: '#47667a',
+    accent: '#47667a',
+    labelChars: 18,
+  },
+  boiler: {
+    typeLabel: 'BLR',
+    width: 156,
+    height: 100,
+    fill: '#fff8f1',
+    innerFill: '#fffdf9',
+    stroke: '#8a5b2c',
+    accent: '#8a5b2c',
+    labelChars: 16,
+  },
   heat_exchanger: {
     typeLabel: 'HX',
     width: 148,
@@ -304,6 +367,16 @@ const SYMBOL_LIBRARY = {
     innerFill: '#ffffff',
     stroke: '#6f6658',
     accent: '#6f6658',
+    labelChars: 16,
+  },
+  elevator: {
+    typeLabel: 'ELEV',
+    width: 150,
+    height: 100,
+    fill: '#f7f9fb',
+    innerFill: '#ffffff',
+    stroke: '#566675',
+    accent: '#566675',
     labelChars: 16,
   },
   device: {
@@ -403,6 +476,33 @@ function inferSymbol(node) {
   if (probe.includes('panel') || /\b(lp|rp|dp)-?\d*/.test(probe)) {
     return 'panel';
   }
+  if (probe.includes('chiller') || /\bchl(r|lr)?\b/.test(probe)) {
+    return 'chiller';
+  }
+  if (probe.includes('pump')) {
+    return 'pump';
+  }
+  if (/\bfan\b/.test(probe) || probe.includes('exhaust fan') || probe.includes('supply fan') || probe.includes('relief fan')) {
+    return 'fan';
+  }
+  if (probe.includes('boiler')) {
+    return 'boiler';
+  }
+  if (/\brtu\b/.test(probe) || probe.includes('rooftop unit')) {
+    return 'rtu';
+  }
+  if (/\bahu\b/.test(probe) || probe.includes('air handler') || probe.includes('air handling') || probe.includes('hvac')) {
+    return 'hvac';
+  }
+  if (probe.includes('elevator') || probe.includes('lift') || /\belv\b/.test(probe)) {
+    return 'elevator';
+  }
+  if (probe.includes('tank')) {
+    return 'tank';
+  }
+  if (probe.includes('valve')) {
+    return 'valve';
+  }
   if (probe.includes('lighting')) {
     return 'lighting';
   }
@@ -418,6 +518,17 @@ function inferSymbol(node) {
 
 function getSymbolSpec(symbolType) {
   return SYMBOL_LIBRARY[normalizeSymbol(symbolType)] ?? SYMBOL_LIBRARY.device;
+}
+
+function resolveGlyph(symbolType, spec = getSymbolSpec(symbolType)) {
+  const symbol = normalizeSymbol(symbolType);
+  const hasSymbolSpec = Object.prototype.hasOwnProperty.call(SYMBOL_LIBRARY, symbol);
+
+  if (!hasSymbolSpec) {
+    return 'device';
+  }
+
+  return spec.glyph ?? symbol;
 }
 
 function wrapText(text, maxChars) {
@@ -491,6 +602,7 @@ function renderTextLines(lines, x, y, options = {}) {
 function getNodeVisual(node) {
   const symbol = inferSymbol(node);
   const spec = getSymbolSpec(symbol);
+  const glyph = resolveGlyph(symbol, spec);
   const labelLines = wrapText(node.label, spec.labelChars);
   const labelFontSize = 13;
   const labelLineHeight = 15;
@@ -508,6 +620,7 @@ function getNodeVisual(node) {
   return {
     ...node,
     symbol,
+    glyph,
     spec,
     labelLines,
     labelFontSize,
@@ -523,7 +636,7 @@ function getNodeVisual(node) {
 }
 
 function renderSymbolGlyph(symbolType, x, y, width, height, spec) {
-  const symbol = normalizeSymbol(symbolType);
+  const symbol = resolveGlyph(symbolType, spec);
   const cx = x + width / 2;
   const cy = y + height / 2;
   const stroke = spec.stroke;
@@ -689,6 +802,17 @@ function renderSymbolGlyph(symbolType, x, y, width, height, spec) {
       return `<path d="M ${x + 18} ${cy} H ${x + width - 18}" fill="none" stroke="${accent}" stroke-width="6" stroke-linecap="round"/>
         <path d="M ${cx - 34} ${cy - 16} V ${cy + 16} M ${cx} ${cy - 16} V ${cy + 16} M ${cx + 34} ${cy - 16} V ${cy + 16}" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linecap="round"/>`;
     }
+    case 'chiller': {
+      const bodyX = x + 16;
+      const bodyY = y + 12;
+      const bodyW = width - 32;
+      const bodyH = height - 24;
+      const fanR = Math.min(bodyW, bodyH) * 0.17;
+      return `<rect x="${bodyX}" y="${bodyY}" width="${bodyW}" height="${bodyH}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="1.8"/>
+        <circle cx="${bodyX + bodyW * 0.33}" cy="${cy}" r="${fanR}" fill="#ffffff" stroke="${accent}" stroke-width="1.5"/>
+        <circle cx="${bodyX + bodyW * 0.67}" cy="${cy}" r="${fanR}" fill="#ffffff" stroke="${accent}" stroke-width="1.5"/>
+        <path d="M ${bodyX + 12} ${bodyY + bodyH - 10} C ${bodyX + 24} ${bodyY + bodyH - 4}, ${bodyX + 34} ${bodyY + bodyH - 16}, ${bodyX + 46} ${bodyY + bodyH - 10} S ${bodyX + 68} ${bodyY + bodyH - 4}, ${bodyX + 80} ${bodyY + bodyH - 10}" fill="none" stroke="${accent}" stroke-width="1.5" stroke-linecap="round"/>`;
+    }
     case 'motor': {
       const r = Math.min(width, height) * 0.27;
       return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
@@ -714,6 +838,50 @@ function renderSymbolGlyph(symbolType, x, y, width, height, spec) {
         <path d="M ${cx - r * 1.6} ${cy} H ${cx - r * 0.3} M ${cx + r * 0.3} ${cy} H ${cx + r * 1.6}" fill="none" stroke="${stroke}" stroke-width="1.6" stroke-linecap="round"/>
         <path d="M ${cx - r * 0.55} ${cy} H ${cx + r * 0.55} M ${cx + r * 0.25} ${cy - r * 0.35} L ${cx + r * 0.55} ${cy} L ${cx + r * 0.25} ${cy + r * 0.35}" fill="none" stroke="${accent}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`;
     }
+    case 'fan': {
+      const r = Math.min(width, height) * 0.24;
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+        <circle cx="${cx}" cy="${cy}" r="4" fill="${accent}"/>
+        <path d="M ${cx} ${cy - 2} Q ${cx + r * 0.75} ${cy - r * 0.9} ${cx + r * 0.25} ${cy + r * 0.08}" fill="none" stroke="${accent}" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M ${cx - 2} ${cy + 1} Q ${cx - r * 0.95} ${cy + r * 0.28} ${cx - r * 0.12} ${cy + r * 0.54}" fill="none" stroke="${accent}" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M ${cx + 1} ${cy + 2} Q ${cx + r * 0.2} ${cy + r * 1.02} ${cx - r * 0.38} ${cy + r * 0.08}" fill="none" stroke="${accent}" stroke-width="1.8" stroke-linecap="round"/>`;
+    }
+    case 'hvac': {
+      const bodyX = x + 16;
+      const bodyY = y + 12;
+      const bodyW = width - 32;
+      const bodyH = height - 24;
+      const fanR = Math.min(bodyW, bodyH) * 0.16;
+      const fanCx = bodyX + bodyW * 0.32;
+      const coilX = bodyX + bodyW * 0.56;
+      return `<rect x="${bodyX}" y="${bodyY}" width="${bodyW}" height="${bodyH}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="1.8"/>
+        <circle cx="${fanCx}" cy="${cy}" r="${fanR}" fill="#ffffff" stroke="${accent}" stroke-width="1.5"/>
+        <circle cx="${fanCx}" cy="${cy}" r="3.5" fill="${accent}"/>
+        <path d="M ${fanCx} ${cy - 2} Q ${fanCx + fanR * 0.7} ${cy - fanR * 0.8} ${fanCx + fanR * 0.22} ${cy + fanR * 0.05} M ${fanCx - 2} ${cy + 1} Q ${fanCx - fanR * 0.88} ${cy + fanR * 0.28} ${fanCx - fanR * 0.1} ${cy + fanR * 0.5} M ${fanCx + 1} ${cy + 2} Q ${fanCx + fanR * 0.18} ${cy + fanR * 0.95} ${fanCx - fanR * 0.35} ${cy + fanR * 0.08}" fill="none" stroke="${accent}" stroke-width="1.4" stroke-linecap="round"/>
+        <path d="M ${coilX} ${bodyY + 14} C ${coilX + 8} ${bodyY + 8}, ${coilX + 18} ${bodyY + 20}, ${coilX + 26} ${bodyY + 14} S ${coilX + 42} ${bodyY + 20}, ${coilX + 50} ${bodyY + 14} M ${coilX} ${bodyY + 28} C ${coilX + 8} ${bodyY + 22}, ${coilX + 18} ${bodyY + 34}, ${coilX + 26} ${bodyY + 28} S ${coilX + 42} ${bodyY + 34}, ${coilX + 50} ${bodyY + 28}" fill="none" stroke="${accent}" stroke-width="1.4" stroke-linecap="round"/>`;
+    }
+    case 'rtu': {
+      const bodyX = x + 16;
+      const bodyY = y + 16;
+      const bodyW = width - 32;
+      const bodyH = height - 30;
+      const fanR = Math.min(bodyW, bodyH) * 0.15;
+      return `<path d="M ${bodyX + 8} ${bodyY - 6} H ${bodyX + bodyW - 8}" fill="none" stroke="${stroke}" stroke-width="1.6" stroke-linecap="round"/>
+        <rect x="${bodyX}" y="${bodyY}" width="${bodyW}" height="${bodyH}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="1.8"/>
+        <circle cx="${bodyX + bodyW * 0.3}" cy="${cy + 4}" r="${fanR}" fill="#ffffff" stroke="${accent}" stroke-width="1.5"/>
+        <circle cx="${bodyX + bodyW * 0.3}" cy="${cy + 4}" r="3.5" fill="${accent}"/>
+        <path d="M ${bodyX + bodyW * 0.55} ${bodyY + 12} H ${bodyX + bodyW - 16} M ${bodyX + bodyW * 0.55} ${bodyY + 22} H ${bodyX + bodyW - 16} M ${bodyX + bodyW * 0.55} ${bodyY + 32} H ${bodyX + bodyW - 16}" fill="none" stroke="${accent}" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M ${bodyX + bodyW - 18} ${bodyY} V ${bodyY - 8} H ${bodyX + bodyW - 6}" fill="none" stroke="${accent}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>`;
+    }
+    case 'boiler': {
+      const bodyX = cx - width * 0.16;
+      const bodyY = cy - height * 0.18;
+      const bodyW = width * 0.32;
+      const bodyH = height * 0.42;
+      return `<rect x="${bodyX}" y="${bodyY}" width="${bodyW}" height="${bodyH}" rx="12" fill="${fill}" stroke="${stroke}" stroke-width="1.8"/>
+        <path d="M ${cx} ${bodyY + 14} C ${cx + 8} ${bodyY + 8}, ${cx + 10} ${bodyY + 24}, ${cx} ${bodyY + 30} C ${cx - 10} ${bodyY + 24}, ${cx - 8} ${bodyY + 8}, ${cx} ${bodyY + 14}" fill="none" stroke="${accent}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M ${bodyX + 14} ${bodyY + bodyH} H ${bodyX + bodyW - 14} M ${cx} ${bodyY + bodyH} V ${bodyY + bodyH + 10}" fill="none" stroke="${stroke}" stroke-width="1.4" stroke-linecap="round"/>`;
+    }
     case 'heat_exchanger': {
       const bodyX = x + 16;
       const bodyY = y + 10;
@@ -735,7 +903,24 @@ function renderSymbolGlyph(symbolType, x, y, width, height, spec) {
       return `<path d="M ${cx - r * 2.4} ${cy} H ${cx - r} M ${cx + r} ${cy} H ${cx + r * 2.4}" fill="none" stroke="${stroke}" stroke-width="1.6" stroke-linecap="round"/>
         <path d="M ${cx - r} ${cy - r} L ${cx} ${cy} L ${cx - r} ${cy + r} M ${cx + r} ${cy - r} L ${cx} ${cy} L ${cx + r} ${cy + r}" fill="none" stroke="${accent}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>`;
     }
-    case 'equipment':
+    case 'elevator': {
+      const shaftX = cx - width * 0.14;
+      const shaftY = cy - height * 0.22;
+      const shaftW = width * 0.28;
+      const shaftH = height * 0.44;
+      return `<rect x="${shaftX}" y="${shaftY}" width="${shaftW}" height="${shaftH}" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="1.8"/>
+        <rect x="${shaftX + 10}" y="${cy - 10}" width="${shaftW - 20}" height="20" rx="4" fill="#ffffff" stroke="${accent}" stroke-width="1.3"/>
+        <path d="M ${cx} ${shaftY + 12} L ${cx - 7} ${shaftY + 22} H ${cx + 7} Z M ${cx} ${shaftY + shaftH - 12} L ${cx - 7} ${shaftY + shaftH - 22} H ${cx + 7} Z" fill="none" stroke="${accent}" stroke-width="1.5" stroke-linejoin="round"/>`;
+    }
+    case 'equipment': {
+      const bodyX = cx - width * 0.18;
+      const bodyY = cy - height * 0.2;
+      const bodyW = width * 0.36;
+      const bodyH = height * 0.4;
+      return `<rect x="${bodyX}" y="${bodyY}" width="${bodyW}" height="${bodyH}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="1.8"/>
+        <circle cx="${bodyX + 14}" cy="${bodyY + 14}" r="4" fill="#ffffff" stroke="${accent}" stroke-width="1.2"/>
+        <path d="M ${bodyX + 26} ${bodyY + 14} H ${bodyX + bodyW - 12} M ${bodyX + 12} ${bodyY + bodyH - 16} H ${bodyX + bodyW - 12}" fill="none" stroke="${accent}" stroke-width="1.4" stroke-linecap="round"/>`;
+    }
     case 'device':
     default: {
       const bodyX = cx - width * 0.16;
@@ -743,7 +928,8 @@ function renderSymbolGlyph(symbolType, x, y, width, height, spec) {
       const bodyW = width * 0.32;
       const bodyH = height * 0.36;
       return `<rect x="${bodyX}" y="${bodyY}" width="${bodyW}" height="${bodyH}" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="1.8"/>
-        <path d="M ${bodyX + 8} ${bodyY + 8} L ${bodyX + bodyW - 8} ${bodyY + bodyH - 8} M ${bodyX + bodyW - 8} ${bodyY + 8} L ${bodyX + 8} ${bodyY + bodyH - 8}" fill="none" stroke="${accent}" stroke-width="1.5" stroke-linecap="round"/>`;
+        <path d="M ${bodyX + 8} ${bodyY + 8} L ${bodyX + bodyW - 8} ${bodyY + bodyH - 8} M ${bodyX + bodyW - 8} ${bodyY + 8} L ${bodyX + 8} ${bodyY + bodyH - 8}" fill="none" stroke="${accent}" stroke-width="1.5" stroke-linecap="round"/>
+        <text x="${cx}" y="${cy + 4}" text-anchor="middle" font-family="Georgia, serif" font-size="13" font-weight="700" fill="${accent}">?</text>`;
     }
   }
 }
@@ -1169,7 +1355,7 @@ function renderNodeBlock(node) {
       })}`
     : '';
 
-  return `<g data-id="${escapeXml(node.id)}" data-symbol="${escapeXml(node.symbol)}" data-level="${node.level}">
+  return `<g data-id="${escapeXml(node.id)}" data-symbol="${escapeXml(node.symbol)}" data-glyph="${escapeXml(node.glyph)}" data-level="${node.level}">
     <path d="M ${node.portInX} ${node.portY} H ${bodyX}" fill="none" stroke="${node.spec.stroke}" stroke-width="1.8" stroke-linecap="round"/>
     <path d="M ${bodyX + bodyWidth} ${node.portY} H ${node.portOutX}" fill="none" stroke="${node.spec.stroke}" stroke-width="1.8" stroke-linecap="round"/>
     <circle cx="${node.portInX}" cy="${node.portY}" r="3.2" fill="#ffffff" stroke="${node.spec.stroke}" stroke-width="1.5"/>
@@ -1179,7 +1365,7 @@ function renderNodeBlock(node) {
     <text x="${bodyX + 10 + chipWidth / 2}" y="${bodyY + 21}" text-anchor="middle" font-family="Trebuchet MS, Verdana, sans-serif" font-size="10" font-weight="700" letter-spacing="0.5" fill="${node.spec.accent}">${escapeXml(node.spec.typeLabel)}</text>
     <path d="M ${bodyX + 10} ${bodyY + 32} H ${bodyX + bodyWidth - 10}" fill="none" stroke="#cad6dd" stroke-width="1.1" stroke-linecap="round"/>
     <rect x="${symbolPanelX}" y="${symbolPanelY}" width="${bodyWidth - 24}" height="${symbolPanelHeight}" rx="12" fill="${node.spec.innerFill}" stroke="#d7e0e6" stroke-width="1"/>
-    ${renderSymbolGlyph(node.symbol, symbolPanelX, symbolPanelY, bodyWidth - 24, symbolPanelHeight, node.spec)}
+    ${renderSymbolGlyph(node.glyph, symbolPanelX, symbolPanelY, bodyWidth - 24, symbolPanelHeight, node.spec)}
     ${renderTextLines(node.labelLines, bodyX + bodyWidth / 2, labelStartY, {
       fontSize: node.labelFontSize,
       fontWeight: '700',

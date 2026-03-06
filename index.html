@@ -530,6 +530,13 @@
                 <span class="tag">Relay</span>
                 <span class="tag">Ground</span>
                 <span class="tag">Busway</span>
+                <span class="tag">Chiller</span>
+                <span class="tag">Pump</span>
+                <span class="tag">Fan</span>
+                <span class="tag">HVAC</span>
+                <span class="tag">RTU</span>
+                <span class="tag">Boiler</span>
+                <span class="tag">Elevator</span>
               </div>
             </article>
 
@@ -540,6 +547,7 @@
                 <li>Extensive SLD content can be authored in the DSL without collapsing into toy examples.</li>
                 <li>Node parameters surface the electrical context directly beside each device.</li>
                 <li>Opposite-side ports and hierarchy spacing keep feeders legible as branches expand.</li>
+                <li>Mechanical and service-end devices now render with dedicated SVG glyphs instead of generic placeholders.</li>
               </ul>
             </article>
           </aside>
@@ -573,7 +581,7 @@
     </div>
 
     <script type="module">
-      import { compileDiagram, parseDiagram, renderSvg } from './src/index.js?v=4';
+      import { compileDiagram, parseDiagram, renderSvg } from './src/index.js?v=5';
 
       const extensiveSldExample = `title "Building Electrical Distribution — Single-Line Diagram"
 node UTIL "Utility Service" symbol utility
@@ -621,25 +629,25 @@ node REC_G "Convenience Receptacles" symbol receptacle
 param REC_G panel RP1
 node IT_O "IT and Office" symbol receptacle
 param IT_O panel RP1
-node CH1 "Chiller No. 1" symbol motor
+node CH1 "Chiller No. 1" symbol chiller
 param CH1 power 200HP
-node CHP "CHW Pump" symbol motor
+node CHP "CHW Pump" symbol pump
 param CHP power 40HP
-node AHU1 "AHU-1" symbol motor
+node AHU1 "AHU-1" symbol hvac
 param AHU1 power 25HP
-node EF1 "Exhaust Fan" symbol motor
+node EF1 "Exhaust Fan" symbol fan
 param EF1 power 10HP
-node BLR "Boiler Plant" symbol motor
+node BLR "Boiler Plant" symbol boiler
 param BLR power 75HP
-node CWP "CW Pump" symbol motor
+node CWP "CW Pump" symbol pump
 param CWP power 30HP
-node AHU2 "AHU-2" symbol motor
+node AHU2 "AHU-2" symbol hvac
 param AHU2 power 20HP
-node RTU1 "RTU-1" symbol equipment
+node RTU1 "RTU-1" symbol rtu
 param RTU1 demand 50kVA
-node ELV "Elevator" symbol equipment
+node ELV "Elevator" symbol elevator
 param ELV demand 75kVA
-node KIT "Kitchen HVAC" symbol equipment
+node KIT "Kitchen HVAC" symbol hvac
 param KIT demand 35kVA
 edge UTIL XFMR1 "service"
 edge XFMR1 MSB "main secondary"

@@ -36,7 +36,7 @@ test('renderSvg returns valid svg output', () => {
 
   assert.match(svg, /^<svg[\s\S]*<\/svg>$/);
   assert.match(svg, /data-id="utility"/);
-  assert.match(svg, /data-symbol="utility"/);
+  assert.match(svg, /data-symbol="utility" data-glyph="utility"/);
   assert.match(svg, /data-edge-from="utility" data-edge-to="msb"/);
   assert.doesNotMatch(svg, /marker-end=/);
 });
@@ -91,9 +91,9 @@ test('renderSvg lays nodes out hierarchically with level metadata', () => {
     edge b c
   `);
 
-  assert.match(svg, /data-id="a" data-symbol="utility" data-level="0"/);
-  assert.match(svg, /data-id="b" data-symbol="transformer" data-level="1"/);
-  assert.match(svg, /data-id="c" data-symbol="switchboard" data-level="2"/);
+  assert.match(svg, /data-id="a" data-symbol="utility" data-glyph="utility" data-level="0"/);
+  assert.match(svg, /data-id="b" data-symbol="transformer" data-glyph="transformer" data-level="1"/);
+  assert.match(svg, /data-id="c" data-symbol="switchboard" data-glyph="switchboard" data-level="2"/);
 });
 
 test('renderSvg routes connections from the source right side to the target left side', () => {
@@ -165,4 +165,40 @@ test('renderSvg infers broader symbol families from device names', () => {
   assert.match(svg, /data-id="cap" data-symbol="capacitor"/);
   assert.match(svg, /data-id="relay" data-symbol="relay"/);
   assert.match(svg, /data-id="bus" data-symbol="busway"/);
+});
+
+test('renderSvg infers dedicated mechanical and equipment glyphs for common field devices', () => {
+  const svg = renderSvg(`
+    node ch "Chiller No. 1"
+    node pump "CHW Pump"
+    node fan "Exhaust Fan"
+    node ahu "AHU-1"
+    node rtu "RTU-1"
+    node elev "Elevator"
+    node boiler "Boiler Plant"
+    edge ch pump
+    edge pump fan
+    edge fan ahu
+    edge ahu rtu
+    edge rtu elev
+    edge elev boiler
+  `);
+
+  assert.match(svg, /data-id="ch" data-symbol="chiller" data-glyph="chiller"/);
+  assert.match(svg, /data-id="pump" data-symbol="pump" data-glyph="pump"/);
+  assert.match(svg, /data-id="fan" data-symbol="fan" data-glyph="fan"/);
+  assert.match(svg, /data-id="ahu" data-symbol="hvac" data-glyph="hvac"/);
+  assert.match(svg, /data-id="rtu" data-symbol="rtu" data-glyph="rtu"/);
+  assert.match(svg, /data-id="elev" data-symbol="elevator" data-glyph="elevator"/);
+  assert.match(svg, /data-id="boiler" data-symbol="boiler" data-glyph="boiler"/);
+  assert.doesNotMatch(svg, /data-id="(ch|pump|fan|ahu|rtu|elev|boiler)" data-symbol="[^"]+" data-glyph="device"/);
+});
+
+test('renderSvg exposes fallback glyphs for unknown symbol types', () => {
+  const svg = renderSvg(`
+    node mystery "Mystery Device" symbol custom-device
+  `);
+
+  assert.match(svg, /data-id="mystery" data-symbol="custom_device" data-glyph="device"/);
+  assert.match(svg, />\?</);
 });
