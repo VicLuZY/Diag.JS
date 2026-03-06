@@ -54,6 +54,16 @@ const graph = compileDiagram(ast);
 const svg = renderSvg(graph);
 ```
 
+## Website
+
+The demo site is built with Vite.
+
+```sh
+npm install
+npm run dev
+npm run build
+```
+
 ## Acknowledgement
 
 DiagJS is inspired by Mermaid.
