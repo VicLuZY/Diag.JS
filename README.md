@@ -106,6 +106,21 @@ npm run dev
 npm run build
 ```
 
+## Documentation
+
+The repository also ships a VitePress documentation site under `docs/`.
+
+```sh
+npm run docs:dev
+npm run docs:build
+```
+
+Reference inventory pages are generated from the renderer source files:
+
+```sh
+npm run docs:generate
+```
+
 ## Acknowledgement
 
 DiagJS is inspired by Mermaid.
