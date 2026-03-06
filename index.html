@@ -78,6 +78,25 @@
         padding: 28px;
       }
 
+      .site-disclaimer {
+        margin-bottom: 20px;
+        padding: 18px 22px;
+        border: 1px solid rgba(255, 255, 255, 0.74);
+        border-radius: 22px;
+        background: linear-gradient(180deg, rgba(255, 248, 230, 0.9), rgba(244, 232, 216, 0.82));
+        box-shadow:
+          0 24px 60px -36px var(--shadow),
+          inset 0 1px 0 rgba(255, 255, 255, 0.78);
+        backdrop-filter: blur(10px);
+      }
+
+      .site-disclaimer p:last-child {
+        margin: 0;
+        max-width: 92ch;
+        font-size: 15px;
+        line-height: 1.65;
+      }
+
       .hero,
       .docs-section,
       .showcase,
@@ -642,6 +661,14 @@
   </head>
   <body>
     <div class="page">
+      <section class="site-disclaimer" aria-label="Under development notice">
+        <p class="eyebrow">Under Development</p>
+        <p>
+          <strong>Diag.JS, its DSL, renderer behavior, device libraries, and documentation are still evolving.</strong>
+          Expect syntax, examples, supported equipment, and output conventions to change as the platform matures.
+        </p>
+      </section>
+
       <section class="hero">
         <div>
           <div class="brand-lockup">
