@@ -1,9 +1,12 @@
 # DiagJS
 
-DiagJS is a text-to-SVG diagram engine for building systems. The repo now ships two renderers:
+DiagJS is a text-to-SVG diagram engine for building systems. The repo now ships five renderers:
 
 - `renderSvg(...)` for electrical single-line diagrams
 - `renderHvacSvg(...)` for mechanical HVAC schematics
+- `renderNetworkSvg(...)` for data centre and campus network schematics
+- `renderFireAlarmSvg(...)` for campus fire alarm and emergency voice schematics
+- `renderLightingControlSvg(...)` for lighting control schematics
 
 ## DSL
 
@@ -35,13 +38,13 @@ edge msb rtu1 "roof load"
 
 DiagJS includes dedicated SVG symbols for common power and building-distribution devices such as transformers, switchboards, panels, MCCs, pumps, fans, HVAC units, RTUs, boilers, elevators, and more. Assemblies like switchboards, panelboards, and MCCs render as main-device plus bus plus feeder sections, while source and load terminals are suppressed on the impossible side. When no explicit `symbol` is provided, the renderer infers a matching device family from the node id and label where possible.
 
-The HVAC renderer uses the same base DSL, but it also respects:
+The HVAC, network, fire alarm, and lighting renderers use the same base DSL, but they also respect:
 
 - `param <nodeId> lane <condenser|chilled|air|exhaust|heating|controls|terminal>`
 - `param <nodeId> column <number>`
 - `param <nodeId> slot <number>`
 
-That makes it possible to place looped hydronic returns and controls on stable mechanical bands instead of forcing everything into a one-direction feeder tree.
+That makes it possible to place looped systems, campus overlays, and control layers on stable discipline bands instead of forcing everything into a one-direction feeder tree.
 
 ## API
 
@@ -65,37 +68,37 @@ const graph = compileDiagram(ast);
 const svg = renderSvg(graph);
 ```
 
-HVAC example:
+Lane-based example:
 
 ```ts
-import { compileHvacDiagram, renderHvacSvg } from 'diagjs';
+import { compileNetworkDiagram, renderNetworkSvg } from 'diagjs';
 
 const source = `
-  title "Office Tower HVAC Mechanical Schematic"
-  node OA1 "Outside Air Intake Louver" symbol outside-air
-  param OA1 lane air
-  param OA1 column 0
-  node MX1 "AHU-1 Mixing Box" symbol mixing-box
-  param MX1 lane air
-  param MX1 column 1
-  node SF1 "Supply Fan Array" symbol fan
-  param SF1 lane air
-  param SF1 column 2
-  node VAV1 "VAV-1 East Open Office" symbol vav
-  param VAV1 lane air
-  param VAV1 column 3
-  edge OA1 MX1 "OA"
-  edge MX1 SF1 "mixed air"
-  edge SF1 VAV1 "SA"
+  title "Data Centre Fabric"
+  node wan "Carrier Internet" symbol cloud
+  param wan lane external
+  param wan column 0
+  node core "Core Switch Pair" symbol core
+  param core lane core
+  param core column 1
+  node spine "Spine Fabric A" symbol spine
+  param spine lane fabric
+  param spine column 2
+  node cluster "Virtualization Cluster A" symbol virtualization
+  param cluster lane fabric
+  param cluster column 3
+  edge wan core "internet"
+  edge core spine "100G fabric"
+  edge spine cluster "100G fabric"
 `;
 
-const schematic = compileHvacDiagram(source);
-const svg = renderHvacSvg(schematic);
+const schematic = compileNetworkDiagram(source);
+const svg = renderNetworkSvg(schematic);
 ```
 
 ## Website
 
-The demo site is built with Vite.
+The demo site is built with Vite and the homepage exposes a tabbed showcase for all five diagram families.
 
 ```sh
 npm install

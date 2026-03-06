@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="./assets/diagjs-logo.svg" />
-    <title>Diag.JS | Electrical and HVAC schematics</title>
+    <title>Diag.JS | Multi-discipline schematic renderer</title>
     <style>
       :root {
         color-scheme: light;
@@ -73,7 +73,7 @@
       .page {
         position: relative;
         z-index: 1;
-        max-width: 1580px;
+        max-width: 1600px;
         margin: 0 auto;
         padding: 28px;
       }
@@ -92,7 +92,7 @@
 
       .hero {
         display: grid;
-        grid-template-columns: minmax(0, 1.3fr) minmax(340px, 0.92fr);
+        grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.92fr);
         gap: 28px;
         padding: 34px;
       }
@@ -137,7 +137,7 @@
 
       .hero h1 {
         max-width: 11ch;
-        font-size: clamp(2.8rem, 5vw, 5.4rem);
+        font-size: clamp(2.7rem, 4.8vw, 5.2rem);
         line-height: 0.94;
         letter-spacing: -0.04em;
       }
@@ -153,7 +153,7 @@
       }
 
       .lede {
-        max-width: 60ch;
+        max-width: 62ch;
         margin: 22px 0 0;
         font-size: 1.08rem;
         line-height: 1.62;
@@ -238,7 +238,7 @@
         justify-content: space-between;
         align-items: end;
         gap: 24px;
-        margin-bottom: 24px;
+        margin-bottom: 18px;
       }
 
       .showcase-head h2 {
@@ -247,14 +247,53 @@
       }
 
       .section-copy {
-        max-width: 48ch;
+        max-width: 54ch;
         margin: 0;
         line-height: 1.6;
       }
 
+      .tab-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 0 0 22px;
+        padding: 0;
+      }
+
+      .tab-button {
+        border: 1px solid rgba(33, 55, 72, 0.18);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.75);
+        color: var(--muted);
+        font: inherit;
+        font-size: 0.92rem;
+        font-weight: 700;
+        padding: 11px 16px;
+        cursor: pointer;
+        transition:
+          background 160ms ease,
+          color 160ms ease,
+          border-color 160ms ease,
+          transform 160ms ease,
+          box-shadow 160ms ease;
+      }
+
+      .tab-button:hover {
+        background: rgba(255, 255, 255, 0.92);
+        color: var(--accent);
+        transform: translateY(-1px);
+      }
+
+      .tab-button.is-active {
+        background: linear-gradient(135deg, var(--accent), #213748);
+        color: #f6f8fa;
+        border-color: transparent;
+        box-shadow: 0 14px 26px -18px rgba(33, 55, 72, 0.7);
+      }
+
       .showcase-grid {
         display: grid;
-        grid-template-columns: minmax(290px, 340px) minmax(0, 1fr);
+        grid-template-columns: minmax(300px, 348px) minmax(0, 1fr);
         gap: 22px;
         align-items: start;
       }
@@ -383,7 +422,7 @@
 
       .diagram-wrap {
         position: relative;
-        max-height: min(78vh, 1100px);
+        max-height: min(78vh, 1120px);
         padding: 18px;
         overflow: auto;
       }
@@ -510,133 +549,114 @@
             <img class="brand-mark" src="./assets/diagjs-logo.svg" alt="Diag.JS logo" width="76" height="76" />
             <div>
               <p class="eyebrow">Diag.JS / Building Systems Showcase</p>
-              <p class="brand-copy">Text-to-SVG schematics for electrical single-lines and mechanical HVAC drawings.</p>
+              <p class="brand-copy">Text-to-SVG schematics for electrical, HVAC, network, fire alarm, and lighting control drawings.</p>
             </div>
           </div>
-          <h1>Building-system schematics rendered like deliverables, not toy graphs.</h1>
+          <h1>Five building-system diagram families, one typed rendering stack.</h1>
           <p class="lede">
-            The homepage now carries two full discipline demos: a building electrical distribution single-line and an
-            HVAC mechanical schematic with explicit condenser water, chilled water, heating water, airside, terminal,
-            and controls bands.
+            The homepage now ships as a tabbed Vite showcase: electrical single-line, HVAC mechanical, data centre
+            network, campus fire alarm, and lighting control. Every sheet is generated live from inline DSL, rendered
+            to SVG, and exportable from the same page.
           </p>
           <div class="hero-actions">
-            <a class="button" href="#electrical-showcase">Electrical Demo</a>
-            <a class="button secondary" href="#hvac-showcase">HVAC Demo</a>
-            <span class="footer-note">Both sheets are rendered live from inline DSL examples on the same homepage.</span>
+            <a class="button" href="#demo-showcase">Open Live Demos</a>
+            <a class="button secondary" href="https://github.com/VicLuZY/Diag.JS">View Repository</a>
+            <span class="footer-note">Switch tabs to compare how the same authoring model scales across disciplines.</span>
           </div>
         </div>
 
         <aside class="hero-stats" aria-label="Diagram statistics">
           <article class="stat-card stat-card-hero">
-            <span class="stat-label">Electrical Nodes</span>
-            <strong class="stat-value" data-stat="electricalNodes">0</strong>
-            <span class="stat-note">distribution devices and end loads in the single-line demo</span>
+            <span class="stat-label" data-metric-label="0">Nodes</span>
+            <strong class="stat-value" data-metric-value="0">0</strong>
+            <span class="stat-note" data-metric-note="0">active demo metric</span>
           </article>
           <article class="stat-card">
-            <span class="stat-label">Electrical Runs</span>
-            <strong class="stat-value" data-stat="electricalEdges">0</strong>
-            <span class="stat-note">hierarchy-routed feeder runs through the electrical example</span>
+            <span class="stat-label" data-metric-label="1">Runs</span>
+            <strong class="stat-value" data-metric-value="1">0</strong>
+            <span class="stat-note" data-metric-note="1">active demo metric</span>
           </article>
           <article class="stat-card">
-            <span class="stat-label">HVAC Components</span>
-            <strong class="stat-value" data-stat="hvacComponents">0</strong>
-            <span class="stat-note">mechanical devices rendered on the HVAC schematic bands</span>
+            <span class="stat-label" data-metric-label="2">Layers</span>
+            <strong class="stat-value" data-metric-value="2">0</strong>
+            <span class="stat-note" data-metric-note="2">active demo metric</span>
           </article>
           <article class="stat-card">
-            <span class="stat-label">HVAC Media</span>
-            <strong class="stat-value" data-stat="hvacMedia">0</strong>
-            <span class="stat-note">duct and piping service types styled independently</span>
+            <span class="stat-label" data-metric-label="3">Coverage</span>
+            <strong class="stat-value" data-metric-value="3">0</strong>
+            <span class="stat-note" data-metric-note="3">active demo metric</span>
           </article>
         </aside>
       </section>
 
-      <section class="showcase" id="electrical-showcase">
+      <section class="showcase" id="demo-showcase">
         <div class="showcase-head">
           <div>
             <p class="eyebrow">Live Diagram</p>
-            <h2>Building electrical distribution single-line diagram</h2>
+            <h2 id="activeSectionTitle">Building electrical distribution single-line diagram</h2>
           </div>
-          <p class="section-copy" id="electricalSummary">
-            The demo combines utility service, main transformation, switchboard distribution, lighting/receptacle
-            step-down service, motor control centers, and downstream end loads.
+          <p class="section-copy" id="activeSummary">
+            Select a tab to inspect a full inline DSL example and its rendered SVG sheet.
           </p>
+        </div>
+
+        <div class="tab-strip" role="tablist" aria-label="Diagram families" id="demoTabs">
+          <button type="button" class="tab-button is-active" role="tab" aria-selected="true" data-demo-tab="electrical">Electrical</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" data-demo-tab="hvac">HVAC</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" data-demo-tab="network">Network</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" data-demo-tab="fire-alarm">Fire Alarm</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false" data-demo-tab="lighting-control">Lighting Control</button>
         </div>
 
         <div class="showcase-grid">
           <aside class="sidebar">
             <article class="card">
-              <p class="eyebrow">Major Branches</p>
-              <h3>Main downstream equipment</h3>
-              <ul class="list" id="electricalBranchList"></ul>
+              <p class="eyebrow" id="detailEyebrow">Major Branches</p>
+              <h3 id="detailTitle">Main downstream equipment</h3>
+              <ul class="list" id="detailList"></ul>
             </article>
 
             <article class="card">
-              <p class="eyebrow">Voltage Stack</p>
-              <h3>Levels carried in the model</h3>
-              <div class="tags" id="electricalVoltageTags"></div>
+              <p class="eyebrow" id="tagGroupAEyebrow">Voltage Stack</p>
+              <h3 id="tagGroupATitle">Levels carried in the model</h3>
+              <div class="tags" id="tagGroupAList"></div>
             </article>
 
             <article class="card">
-              <p class="eyebrow">Symbol Library</p>
-              <h3>Expanded device set</h3>
-              <div class="tags">
-                <span class="tag">Utility</span>
-                <span class="tag">Transformer</span>
-                <span class="tag">Switchboard</span>
-                <span class="tag">Panel</span>
-                <span class="tag">MCC</span>
-                <span class="tag">Generator</span>
-                <span class="tag">Breaker</span>
-                <span class="tag">Disconnect</span>
-                <span class="tag">Fuse</span>
-                <span class="tag">ATS</span>
-                <span class="tag">UPS</span>
-                <span class="tag">Battery</span>
-                <span class="tag">PV</span>
-                <span class="tag">Inverter</span>
-                <span class="tag">Meter</span>
-                <span class="tag">Capacitor</span>
-                <span class="tag">Relay</span>
-                <span class="tag">Ground</span>
-                <span class="tag">Busway</span>
-                <span class="tag">Chiller</span>
-                <span class="tag">Pump</span>
-                <span class="tag">Fan</span>
-                <span class="tag">HVAC</span>
-                <span class="tag">RTU</span>
-                <span class="tag">Boiler</span>
-                <span class="tag">Elevator</span>
-              </div>
+              <p class="eyebrow" id="tagGroupBEyebrow">Presentation Model</p>
+              <h3 id="tagGroupBTitle">How the single-line behaves</h3>
+              <div class="tags" id="tagGroupBList"></div>
             </article>
 
             <article class="card">
-              <p class="eyebrow">Why this example</p>
-              <h3>What the homepage proves</h3>
-              <ul class="list">
-                <li>Extensive SLD content can be authored in the DSL without collapsing into toy examples.</li>
-                <li>Node parameters surface the electrical context directly beside each device.</li>
-                <li>Opposite-side ports and hierarchy spacing keep feeders legible as branches expand.</li>
-                <li>Mechanical and service-end devices now render with dedicated SVG glyphs instead of generic placeholders.</li>
-              </ul>
+              <p class="eyebrow" id="libraryEyebrow">Symbol Library</p>
+              <h3 id="libraryTitle">Expanded device set</h3>
+              <div class="tags" id="libraryTagList"></div>
+            </article>
+
+            <article class="card">
+              <p class="eyebrow" id="proofEyebrow">Why this example</p>
+              <h3 id="proofTitle">What the module proves</h3>
+              <ul class="list" id="proofList"></ul>
             </article>
           </aside>
 
-          <section class="diagram-panel" aria-label="Rendered SLD diagram">
+          <section class="diagram-panel" aria-label="Rendered diagram showcase">
             <header class="diagram-meta">
               <div>
                 <p class="eyebrow">Rendered From DSL</p>
-                <h3>Extensive building distribution model</h3>
+                <h3 id="diagramTitle">Extensive building distribution model</h3>
               </div>
               <div>
-                <p class="diagram-note">Source and SVG update together from the same inline example.</p>
+                <p class="diagram-note" id="diagramNote">Source and SVG update together from the same inline DSL example.</p>
                 <div class="diagram-actions">
-                  <button type="button" class="diagram-action" id="saveElectricalSvg">Save SVG</button>
-                  <button type="button" class="diagram-action" id="saveElectricalPng">Save PNG</button>
+                  <button type="button" class="diagram-action" id="saveActiveSvg">Save SVG</button>
+                  <button type="button" class="diagram-action" id="saveActivePng">Save PNG</button>
                 </div>
               </div>
             </header>
             <div class="diagram-wrap">
-              <div class="diagram-canvas" id="electricalDiagram"></div>
+              <div class="diagram-canvas" id="activeDiagram"></div>
             </div>
           </section>
         </div>
@@ -644,110 +664,9 @@
 
       <section class="source-section">
         <p class="eyebrow">Example Source</p>
-        <h2>DSL used for the electrical showcase</h2>
+        <h2 id="sourceTitle">DSL used for the electrical showcase</h2>
         <div class="source-wrap">
-          <pre id="electricalSource"><code></code></pre>
-        </div>
-      </section>
-
-      <section class="showcase" id="hvac-showcase">
-        <div class="showcase-head">
-          <div>
-            <p class="eyebrow">Live Diagram</p>
-            <h2>Mechanical HVAC schematic with airside and hydronic systems</h2>
-          </div>
-          <p class="section-copy" id="hvacSummary">
-            The demo coordinates condenser water, chilled water, heating water, airside processing, terminal units,
-            and DDC controls as a mechanical-style schematic rather than a generic node-link graph.
-          </p>
-        </div>
-
-        <div class="showcase-grid">
-          <aside class="sidebar">
-            <article class="card">
-              <p class="eyebrow">Major Systems</p>
-              <h3>Mechanical stacks carried on the sheet</h3>
-              <ul class="list" id="hvacBranchList"></ul>
-            </article>
-
-            <article class="card">
-              <p class="eyebrow">Media Legend</p>
-              <h3>Duct and piping services in play</h3>
-              <div class="tags" id="hvacMediaTags"></div>
-            </article>
-
-            <article class="card">
-              <p class="eyebrow">Lane Bands</p>
-              <h3>Disciplined placement model</h3>
-              <div class="tags" id="hvacLaneTags"></div>
-            </article>
-
-            <article class="card">
-              <p class="eyebrow">HVAC Library</p>
-              <h3>Mechanical component coverage</h3>
-              <div class="tags">
-                <span class="tag">Louver</span>
-                <span class="tag">ERV</span>
-                <span class="tag">Mixing Box</span>
-                <span class="tag">Filter</span>
-                <span class="tag">Cooling Coil</span>
-                <span class="tag">Heating Coil</span>
-                <span class="tag">Humidifier</span>
-                <span class="tag">Supply Fan</span>
-                <span class="tag">VAV</span>
-                <span class="tag">FCU</span>
-                <span class="tag">Diffuser</span>
-                <span class="tag">Return Grille</span>
-                <span class="tag">Chiller</span>
-                <span class="tag">Cooling Tower</span>
-                <span class="tag">Boiler</span>
-                <span class="tag">Pump</span>
-                <span class="tag">Strainer</span>
-                <span class="tag">Control Valve</span>
-                <span class="tag">Separator</span>
-                <span class="tag">Expansion Tank</span>
-                <span class="tag">BMS</span>
-              </div>
-            </article>
-
-            <article class="card">
-              <p class="eyebrow">Why this example</p>
-              <h3>What the HVAC module proves</h3>
-              <ul class="list">
-                <li>Looped hydronic returns can be rendered without collapsing the schematic into an invalid DAG.</li>
-                <li>Mechanical components now render with discipline-specific SVG symbols instead of electrical placeholders.</li>
-                <li>`lane`, `column`, and `slot` params let authors place condenser, chilled, heating, airside, and controls on stable bands.</li>
-                <li>Edge media labels drive visual differentiation between OA, SA, RA, CHWS, CHWR, HHWS, HHWR, and controls.</li>
-              </ul>
-            </article>
-          </aside>
-
-          <section class="diagram-panel" aria-label="Rendered HVAC mechanical schematic">
-            <header class="diagram-meta">
-              <div>
-                <p class="eyebrow">Rendered From DSL</p>
-                <h3>Office tower HVAC plant and airside model</h3>
-              </div>
-              <div>
-                <p class="diagram-note">The renderer keeps supply, return, plant, and controls readable by pinning nodes to explicit mechanical lanes.</p>
-                <div class="diagram-actions">
-                  <button type="button" class="diagram-action" id="saveHvacSvg">Save SVG</button>
-                  <button type="button" class="diagram-action" id="saveHvacPng">Save PNG</button>
-                </div>
-              </div>
-            </header>
-            <div class="diagram-wrap">
-              <div class="diagram-canvas" id="hvacDiagram"></div>
-            </div>
-          </section>
-        </div>
-      </section>
-
-      <section class="source-section">
-        <p class="eyebrow">Example Source</p>
-        <h2>DSL used for the HVAC showcase</h2>
-        <div class="source-wrap">
-          <pre id="hvacSource"><code></code></pre>
+          <pre id="sourceCode"><code></code></pre>
         </div>
       </section>
 
