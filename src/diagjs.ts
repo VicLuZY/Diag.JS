@@ -5,7 +5,166 @@ const NODE_RE = new RegExp(`^node\\s+(${NODE_ID_RE})\\s+"([^"]+)"(?:\\s+symbol\\
 const EDGE_RE = new RegExp(`^edge\\s+(${NODE_ID_RE})\\s+(${NODE_ID_RE})(?:\\s+"([^"]+)")?$`);
 const PARAM_RE = new RegExp(`^param\\s+(${NODE_ID_RE})\\s+([A-Za-z][A-Za-z0-9_-]*)\\s+(?:"([^"]*)"|(\\S+))$`);
 
-const SYMBOL_ALIASES = {
+interface SymbolSpec {
+  typeLabel: string;
+  width: number;
+  height: number;
+  fill: string;
+  innerFill: string;
+  stroke: string;
+  accent: string;
+  labelChars: number;
+  glyph?: string;
+}
+
+interface NodeDeclaration {
+  type: 'NodeDeclaration';
+  id: string;
+  label: string;
+  symbol: string | null;
+  line: number;
+}
+
+interface EdgeDeclaration {
+  type: 'EdgeDeclaration';
+  from: string;
+  to: string;
+  label: string | null;
+  line: number;
+}
+
+interface ParamDeclaration {
+  type: 'ParamDeclaration';
+  nodeId: string;
+  key: string;
+  value: string;
+  line: number;
+}
+
+type DiagramStatement = NodeDeclaration | EdgeDeclaration | ParamDeclaration;
+
+interface DiagramProgram {
+  type: 'DiagramProgram';
+  title: string | null;
+  statements: DiagramStatement[];
+}
+
+interface CompiledNode {
+  id: string;
+  label: string;
+  symbol: string | null;
+  params: Record<string, string>;
+}
+
+interface CompiledEdge {
+  from: string;
+  to: string;
+  label: string | null;
+}
+
+interface CompiledDiagram {
+  type: 'CompiledDiagram';
+  title: string | null;
+  nodes: CompiledNode[];
+  edges: CompiledEdge[];
+}
+
+interface TopologyCounts {
+  incomingCount?: number;
+  outgoingCount?: number;
+}
+
+interface TextRenderOptions {
+  anchor?: string;
+  fontSize?: number;
+  fontFamily?: string;
+  fontWeight?: string;
+  fill?: string;
+  lineHeightPx?: number;
+}
+
+interface LayoutOptions {
+  margin?: number;
+  columnGap?: number;
+  rowGap?: number;
+  rootGap?: number;
+}
+
+interface GraphInfo {
+  outgoing: Map<string, CompiledEdge[]>;
+  incoming: Map<string, CompiledEdge[]>;
+  topo: string[];
+  level: Map<string, number>;
+  treeChildren: Map<string, string[]>;
+  roots: string[];
+}
+
+interface PortLayout {
+  key: string;
+  x: number;
+  y: number;
+  index: number;
+}
+
+interface NodeVisual extends CompiledNode {
+  symbol: string;
+  glyph: string;
+  spec: SymbolSpec;
+  presentation: 'assembly' | 'device';
+  role: 'assembly' | 'source' | 'load' | 'inline' | 'isolated';
+  incomingCount: number;
+  outgoingCount: number;
+  hasInputTerminal: boolean;
+  hasOutputTerminal: boolean;
+  connectionRows: number;
+  mainDeviceType: string;
+  labelLines: string[];
+  labelFontSize: number;
+  labelLineHeight: number;
+  labelBlockHeight: number;
+  paramLines: string[];
+  deviceWidth: number;
+  deviceHeight: number;
+  paramWidth: number;
+  paramHeight: number;
+  totalWidth: number;
+  totalHeight: number;
+  level?: number;
+  blockX?: number;
+  deviceX?: number;
+  paramX?: number;
+  blockY?: number;
+  deviceY?: number;
+  paramY?: number | null;
+  anchorY?: number;
+  inputTerminalX?: number;
+  outputTerminalX?: number;
+  inputPorts?: PortLayout[];
+  outputPorts?: PortLayout[];
+  inputPortMap?: Map<string, PortLayout>;
+  outputPortMap?: Map<string, PortLayout>;
+}
+
+interface EdgeLayout {
+  label: string | null;
+  from: NodeVisual;
+  to: NodeVisual;
+  fromPort: PortLayout;
+  toPort: PortLayout;
+  path: string;
+  labelX: number;
+  labelY: number;
+}
+
+interface DiagramLayout {
+  width: number;
+  height: number;
+  titleOffset: number;
+  nodes: NodeVisual[];
+  edges: EdgeLayout[];
+}
+
+const SYMBOL_ALIASES: Record<string, string> = {
   gen: 'generator',
   genset: 'generator',
   utility_service: 'utility',
@@ -48,7 +207,7 @@ const SYMBOL_ALIASES = {
   load: 'equipment',
 };
 
-const SYMBOL_LIBRARY = {
+const SYMBOL_LIBRARY: Record<string, SymbolSpec> = {
   utility: {
     typeLabel: 'UTILITY',
     width: 184,
@@ -393,11 +552,11 @@ const SYMBOL_LIBRARY = {
 
 const ASSEMBLY_SYMBOLS = new Set(['switchboard', 'panel', 'mcc']);
 
-function syntaxError(lineNumber, line) {
+function syntaxError(lineNumber: number, line: string): SyntaxError {
   return new SyntaxError(`Invalid statement at line ${lineNumber}: ${line}`);
 }
 
-function escapeXml(text) {
+function escapeXml(text: string): string {
   return String(text)
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -406,12 +565,12 @@ function escapeXml(text) {
     .replaceAll("'", '&#39;');
 }
 
-function normalizeSymbol(symbolType) {
+function normalizeSymbol(symbolType: string | null | undefined): string {
   const normalized = String(symbolType ?? 'device').toLowerCase().replace(/-/g, '_');
   return SYMBOL_ALIASES[normalized] ?? normalized;
 }
 
-function inferSymbol(node) {
+function inferSymbol(node: Pick<CompiledNode, 'id' | 'label' | 'symbol'>): string {
   if (node.symbol) {
     return normalizeSymbol(node.symbol);
   }
@@ -518,11 +677,11 @@ function inferSymbol(node) {
   return 'equipment';
 }
 
-function getSymbolSpec(symbolType) {
+function getSymbolSpec(symbolType: string | null | undefined): SymbolSpec {
   return SYMBOL_LIBRARY[normalizeSymbol(symbolType)] ?? SYMBOL_LIBRARY.device;
 }
 
-function resolveGlyph(symbolType, spec = getSymbolSpec(symbolType)) {
+function resolveGlyph(symbolType: string | null | undefined, spec: SymbolSpec = getSymbolSpec(symbolType)): string {
   const symbol = normalizeSymbol(symbolType);
   const hasSymbolSpec = Object.prototype.hasOwnProperty.call(SYMBOL_LIBRARY, symbol);
 
@@ -533,11 +692,11 @@ function resolveGlyph(symbolType, spec = getSymbolSpec(symbolType)) {
   return spec.glyph ?? symbol;
 }
 
-function getPresentationKind(symbol) {
+function getPresentationKind(symbol: string): 'assembly' | 'device' {
   return ASSEMBLY_SYMBOLS.has(symbol) ? 'assembly' : 'device';
 }
 
-function getNodeRole(symbol, incomingCount, outgoingCount) {
+function getNodeRole(symbol: string, incomingCount: number, outgoingCount: number): 'assembly' | 'source' | 'load' | 'inline' | 'isolated' {
   if (ASSEMBLY_SYMBOLS.has(symbol) && outgoingCount > 0) {
     return 'assembly';
   }
@@ -553,7 +712,7 @@ function getNodeRole(symbol, incomingCount, outgoingCount) {
   return 'isolated';
 }
 
-function getMainDeviceType(node) {
+function getMainDeviceType(node: Pick<CompiledNode, 'params'> & { symbol: string }): string {
   const configured = String(node.params?.main ?? node.params?.input ?? '').toLowerCase();
   if (configured.includes('lug') || configured.includes('mlo')) {
     return 'mlo';
@@ -568,7 +727,7 @@ function getMainDeviceType(node) {
   return node.symbol === 'panel' ? 'mlo' : 'breaker';
 }
 
-function wrapText(text, maxChars) {
+function wrapText(text: string, maxChars: number): string[] {
   const words = String(text).trim().split(/\s+/).filter(Boolean);
   if (!words.length) {
     return [''];
@@ -614,11 +773,11 @@ function wrapText(text, maxChars) {
   return lines;
 }
 
-function textY(baseY, index, lineHeightPx) {
+function textY(baseY: number, index: number, lineHeightPx: number): number {
   return baseY + index * lineHeightPx;
 }
 
-function renderTextLines(lines, x, y, options = {}) {
+function renderTextLines(lines: string[], x: number, y: number, options: TextRenderOptions = {}): string {
   const {
     anchor = 'middle',
     fontSize = 12,
@@ -636,7 +795,7 @@ function renderTextLines(lines, x, y, options = {}) {
     .join('');
 }
 
-function getNodeVisual(node, topology = {}) {
+function getNodeVisual(node: CompiledNode, topology: TopologyCounts = {}): NodeVisual {
   const incomingCount = topology.incomingCount ?? 0;
   const outgoingCount = topology.outgoingCount ?? 0;
   const symbol = inferSymbol(node);
@@ -693,7 +852,7 @@ function getNodeVisual(node, topology = {}) {
   };
 }
 
-function renderSymbolGlyph(symbolType, x, y, width, height, spec) {
+function renderSymbolGlyph(symbolType: string, x: number, y: number, width: number, height: number, spec: SymbolSpec): string {
   const symbol = resolveGlyph(symbolType, spec);
   const cx = x + width / 2;
   const cy = y + height / 2;
@@ -1003,13 +1162,13 @@ function renderSymbolGlyph(symbolType, x, y, width, height, spec) {
   }
 }
 
-export function parseDiagram(source) {
+export function parseDiagram(source: string): DiagramProgram {
   if (typeof source !== 'string' || source.trim() === '') {
     throw new TypeError('Diagram source must be a non-empty string.');
   }
 
   const lines = source.split(/\r?\n/);
-  const ast = {
+  const ast: DiagramProgram = {
     type: 'DiagramProgram',
     title: null,
     statements: [],
@@ -1079,13 +1238,13 @@ export function parseDiagram(source) {
   return ast;
 }
 
-export function compileDiagram(ast) {
+export function compileDiagram(ast: DiagramProgram): CompiledDiagram {
   if (!ast || ast.type !== 'DiagramProgram' || !Array.isArray(ast.statements)) {
     throw new TypeError('compileDiagram expects the output of parseDiagram.');
   }
 
-  const nodes = new Map();
-  const edges = [];
+  const nodes = new Map<string, CompiledNode>();
+  const edges: CompiledEdge[] = [];
 
   for (const statement of ast.statements) {
     if (statement.type === 'NodeDeclaration') {
@@ -1135,11 +1294,11 @@ export function compileDiagram(ast) {
   };
 }
 
-function buildGraph(compiled) {
+function buildGraph(compiled: CompiledDiagram): GraphInfo {
   const order = compiled.nodes.map((node) => node.id);
-  const outgoing = new Map(order.map((id) => [id, []]));
-  const incoming = new Map(order.map((id) => [id, []]));
-  const indegree = new Map(order.map((id) => [id, 0]));
+  const outgoing = new Map<string, CompiledEdge[]>(order.map((id) => [id, []]));
+  const incoming = new Map<string, CompiledEdge[]>(order.map((id) => [id, []]));
+  const indegree = new Map<string, number>(order.map((id) => [id, 0]));
 
   for (const edge of compiled.edges) {
     outgoing.get(edge.from).push(edge);
@@ -1148,7 +1307,7 @@ function buildGraph(compiled) {
   }
 
   const queue = order.filter((id) => (indegree.get(id) ?? 0) === 0);
-  const topo = [];
+  const topo: string[] = [];
   const seen = new Set();
 
   while (queue.length) {
@@ -1171,7 +1330,7 @@ function buildGraph(compiled) {
     }
   }
 
-  const level = new Map();
+  const level = new Map<string, number>();
   for (const id of topo) {
     let maxLevel = 0;
     for (const edge of incoming.get(id) ?? []) {
@@ -1180,21 +1339,21 @@ function buildGraph(compiled) {
     level.set(id, maxLevel);
   }
 
-  const primaryParent = new Map();
+  const primaryParent = new Map<string, string>();
   for (const edge of compiled.edges) {
     if (!primaryParent.has(edge.to)) {
       primaryParent.set(edge.to, edge.from);
     }
   }
 
-  const treeChildren = new Map(order.map((id) => [id, []]));
+  const treeChildren = new Map<string, string[]>(order.map((id) => [id, []]));
   for (const edge of compiled.edges) {
     if (primaryParent.get(edge.to) === edge.from) {
       treeChildren.get(edge.from).push(edge.to);
     }
   }
 
-  const roots = [];
+  const roots: string[] = [];
   const rootSet = new Set();
   for (const id of order) {
     if ((incoming.get(id) ?? []).length === 0) {
@@ -1222,7 +1381,7 @@ function buildGraph(compiled) {
   };
 }
 
-function layoutDiagram(compiled, options = {}) {
+function layoutDiagram(compiled: CompiledDiagram, options: LayoutOptions = {}): DiagramLayout {
   const margin = options.margin ?? 52;
   const titleOffset = compiled.title ? 64 : 28;
   const columnGap = options.columnGap ?? 136;
@@ -1240,14 +1399,14 @@ function layoutDiagram(compiled, options = {}) {
     ]),
   );
   const maxLevel = Math.max(...compiled.nodes.map((node) => graph.level.get(node.id) ?? 0), 0);
-  const levelWidths = Array.from({ length: maxLevel + 1 }, () => 0);
+  const levelWidths = Array.from({ length: maxLevel + 1 }, (): number => 0);
 
   for (const node of nodesById.values()) {
     const nodeLevel = graph.level.get(node.id) ?? 0;
     levelWidths[nodeLevel] = Math.max(levelWidths[nodeLevel], node.totalWidth);
   }
 
-  const xPositions = [];
+  const xPositions: number[] = [];
   for (let index = 0; index <= maxLevel; index += 1) {
     if (index === 0) {
       xPositions.push(margin);
@@ -1265,8 +1424,8 @@ function layoutDiagram(compiled, options = {}) {
     node.paramX = node.paramWidth ? blockX + (node.totalWidth - node.paramWidth) / 2 : blockX;
   }
 
-  const subtreeHeightMemo = new Map();
-  function getSubtreeHeight(nodeId) {
+  const subtreeHeightMemo = new Map<string, number>();
+  function getSubtreeHeight(nodeId: string): number {
     if (subtreeHeightMemo.has(nodeId)) {
       return subtreeHeightMemo.get(nodeId);
     }
@@ -1286,11 +1445,11 @@ function layoutDiagram(compiled, options = {}) {
     return subtreeHeight;
   }
 
-  function clamp(value, min, max) {
+  function clamp(value: number, min: number, max: number): number {
     return Math.min(max, Math.max(min, value));
   }
 
-  function assignNode(nodeId, top) {
+  function assignNode(nodeId: string, top: number): void {
     const node = nodesById.get(nodeId);
     const children = graph.treeChildren.get(nodeId) ?? [];
     const subtreeHeight = getSubtreeHeight(nodeId);
@@ -1357,7 +1516,7 @@ function layoutDiagram(compiled, options = {}) {
     }
   }
 
-  function spreadPorts(count, centerY, topY, bottomY, gap = 18) {
+  function spreadPorts(count: number, centerY: number, topY: number, bottomY: number, gap = 18): number[] {
     if (count === 0) {
       return [];
     }
@@ -1370,7 +1529,7 @@ function layoutDiagram(compiled, options = {}) {
     return Array.from({ length: count }, (_, index) => start + index * gap);
   }
 
-  function getTerminalBand(node) {
+  function getTerminalBand(node: NodeVisual): { top: number; bottom: number } {
     const top = node.presentation === 'assembly' ? node.deviceY + 58 : node.deviceY + 42;
     const bottom = node.deviceY + node.deviceHeight - node.labelBlockHeight - 18;
     const safeBottom = Math.max(top, bottom);
@@ -1409,16 +1568,18 @@ function layoutDiagram(compiled, options = {}) {
     node.outputPortMap = new Map(node.outputPorts.map((port) => [port.key, port]));
   }
 
-  const edgeLayouts = compiled.edges.map((edge) => {
+  const edgeLayouts: EdgeLayout[] = compiled.edges.map((edge) => {
     const from = nodesById.get(edge.from);
     const to = nodesById.get(edge.to);
     const key = `${edge.from}->${edge.to}`;
-    const fromPort = from.outputPortMap.get(key) ?? {
+    const fromPort: PortLayout = from.outputPortMap.get(key) ?? {
+      key,
       x: from.outputTerminalX,
       y: from.anchorY,
       index: 0,
     };
-    const toPort = to.inputPortMap.get(key) ?? {
+    const toPort: PortLayout = to.inputPortMap.get(key) ?? {
+      key,
       x: to.inputTerminalX,
       y: to.anchorY,
       index: 0,
@@ -1460,7 +1621,7 @@ function layoutDiagram(compiled, options = {}) {
   };
 }
 
-function renderTerminalSets(node, bodyX, bodyWidth) {
+function renderTerminalSets(node: NodeVisual, bodyX: number, bodyWidth: number): string {
   const inputTerminalBlocks = node.inputPorts
     .map(
       (port) => `<path d="M ${node.inputTerminalX} ${port.y} H ${bodyX}" fill="none" stroke="${node.spec.stroke}" stroke-width="1.8" stroke-linecap="round"/>
@@ -1477,7 +1638,7 @@ function renderTerminalSets(node, bodyX, bodyWidth) {
   return `${inputTerminalBlocks}${outputTerminalBlocks}`;
 }
 
-function renderDeviceBlock(kind, x, y, width, height, stroke, accent) {
+function renderDeviceBlock(kind: string, x: number, y: number, width: number, height: number, stroke: string, accent: string): string {
   if (kind === 'mlo') {
     const lugY = y + height / 2;
     return `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="6" fill="#ffffff" stroke="${stroke}" stroke-width="1.3"/>
@@ -1507,7 +1668,7 @@ function renderDeviceBlock(kind, x, y, width, height, stroke, accent) {
     <circle cx="${x + width * 0.34}" cy="${y + height * 0.34}" r="2" fill="${accent}"/>`;
 }
 
-function renderMccBucket(x, y, width, height, stroke, accent) {
+function renderMccBucket(x: number, y: number, width: number, height: number, stroke: string, accent: string): string {
   return `<rect x="${x}" y="${y}" width="${width}" height="${height}" rx="5" fill="#ffffff" stroke="${stroke}" stroke-width="1.2"/>
     <rect x="${x + 6}" y="${y + 4}" width="${width - 18}" height="${height - 8}" rx="3" fill="#eff4f6" stroke="#c3d0d8" stroke-width="0.9"/>
     <circle cx="${x + width - 8}" cy="${y + height / 2}" r="2.4" fill="${accent}"/>
@@ -1515,7 +1676,7 @@ function renderMccBucket(x, y, width, height, stroke, accent) {
     <circle cx="${x + 10}" cy="${y + height / 2}" r="1.8" fill="${accent}"/>`;
 }
 
-function renderAssemblyFace(node, bodyX, bodyY, bodyWidth, bodyHeight) {
+function renderAssemblyFace(node: NodeVisual, bodyX: number, bodyY: number, bodyWidth: number, bodyHeight: number): string {
   const coreX = bodyX + 12;
   const coreY = bodyY + 36;
   const coreWidth = bodyWidth - 24;
@@ -1602,7 +1763,7 @@ function renderAssemblyFace(node, bodyX, bodyY, bodyWidth, bodyHeight) {
     ${outputBlocks}`;
 }
 
-function renderNodeBlock(node) {
+function renderNodeBlock(node: NodeVisual): string {
   const leftPad = node.hasInputTerminal ? 18 : 8;
   const rightPad = node.hasOutputTerminal ? 18 : 8;
   const bodyX = node.deviceX + leftPad;
@@ -1649,7 +1810,7 @@ function renderNodeBlock(node) {
   </g>`;
 }
 
-function renderEdge(edge) {
+function renderEdge(edge: EdgeLayout): string {
   const label = edge.label
     ? `<rect x="${edge.labelX - 6}" y="${edge.labelY - 11}" width="${Math.max(44, edge.label.length * 6.7 + 12)}" height="18" rx="9" fill="#fcfcfb" stroke="#d1dae0" stroke-width="0.8"/>
       <text x="${edge.labelX}" y="${edge.labelY + 2}" font-family="Trebuchet MS, Verdana, sans-serif" font-size="11" fill="#425664">${escapeXml(edge.label)}</text>`
@@ -1661,7 +1822,7 @@ function renderEdge(edge) {
   </g>`;
 }
 
-function renderCompiledSvg(compiled, options) {
+function renderCompiledSvg(compiled: CompiledDiagram, options: LayoutOptions = {}): string {
   if (!compiled || compiled.type !== 'CompiledDiagram') {
     throw new TypeError('renderSvg expects a source string or compileDiagram output.');
   }
@@ -1687,7 +1848,7 @@ function renderCompiledSvg(compiled, options) {
   </svg>`;
 }
 
-export function renderSvg(input, options = {}) {
+export function renderSvg(input: string | CompiledDiagram, options: LayoutOptions = {}): string {
   if (typeof input === 'string') {
     return renderCompiledSvg(compileDiagram(parseDiagram(input)), options);
   }
@@ -1696,18 +1857,18 @@ export function renderSvg(input, options = {}) {
 }
 
 export class DiagJS {
-  static parse(source) {
+  static parse(source: string): DiagramProgram {
     return parseDiagram(source);
   }
 
-  static compile(sourceOrAst) {
+  static compile(sourceOrAst: string | DiagramProgram): CompiledDiagram {
     if (typeof sourceOrAst === 'string') {
       return compileDiagram(parseDiagram(sourceOrAst));
     }
     return compileDiagram(sourceOrAst);
   }
 
-  static render(sourceOrCompiled, options = {}) {
+  static render(sourceOrCompiled: string | CompiledDiagram, options: LayoutOptions = {}): string {
     return renderSvg(sourceOrCompiled, options);
   }
 }

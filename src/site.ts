@@ -1,4 +1,4 @@
-import { compileDiagram, parseDiagram, renderSvg } from './index.js';
+import { compileDiagram, parseDiagram, renderSvg } from './index';
 
 const extensiveSldExample = `title "Building Electrical Distribution — Single-Line Diagram"
 node UTIL "Utility Service" symbol utility

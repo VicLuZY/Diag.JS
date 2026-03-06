@@ -3,17 +3,22 @@
   "version": "1.0.0",
   "description": "A lightweight text-to-SVG diagram engine.",
   "type": "module",
-  "main": "./src/index.js",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.js"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts"
   },
   "devDependencies": {
+    "@types/node": "25.3.5",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
     "vite": "7.3.1"
   },
   "keywords": [

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { compileDiagram, parseDiagram, renderSvg } from '../src/index.js';
+import { compileDiagram, parseDiagram, renderSvg } from '../src/index';
 
 function getNodeBlock(svg, id) {
   const match = svg.match(new RegExp(`<g data-id="${id}"[\\s\\S]*?<\\/g>`));

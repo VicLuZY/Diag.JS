@@ -34,7 +34,7 @@ DiagJS includes dedicated SVG symbols for common power and building-distribution
 
 ## API
 
-```js
+```ts
 import { parseDiagram, compileDiagram, renderSvg } from 'diagjs';
 
 const source = `
