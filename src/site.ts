@@ -36,6 +36,12 @@ interface ShowcaseMetric {
   value(layout: DemoLayout): number | string;
 }
 
+interface LandingMetric {
+  label: string;
+  note: string;
+  value: number | string;
+}
+
 interface ShowcaseTagGroup {
   eyebrow: string;
   title: string;
@@ -106,6 +112,8 @@ const metricElements = Array.from({ length: 4 }, (_, index) => ({
   note: document.querySelector<HTMLElement>(`[data-metric-note="${index}"]`),
 }));
 
+const TOOL_CONNECTION_STYLE_COUNT = 42;
+const TOOL_LAYOUT_BAND_COUNT = 31;
 const ZOOM_STEP = 1.2;
 const MIN_ZOOM_MULTIPLIER = 0.1;
 const MAX_ZOOM_MULTIPLIER = 16;
@@ -486,12 +494,14 @@ const showcases: ShowcaseDefinition[] = [
 
 const showcaseById = new Map(showcases.map((showcase) => [showcase.id, showcase]));
 const renderCache = new Map<string, { layout: DemoLayout; svg: string }>();
+const landingMetrics = createLandingMetrics(showcases);
 let activeShowcaseId = showcases[0]?.id ?? 'electrical';
 
 wireTabs();
 wireDownloadButtons();
 wireZoomButtons();
 observeDiagramViewport();
+renderLandingMetrics();
 renderFooterVersion();
 activateShowcase(resolveInitialShowcaseId(), false);
 window.addEventListener('hashchange', () => {
@@ -553,7 +563,6 @@ function activateShowcase(showcaseId: string, syncHash: boolean): void {
     tagGroupBListEl.replaceChildren(...showcase.tagGroupB.resolve(rendered.layout).map(createTag));
     libraryTagListEl.replaceChildren(...showcase.libraryTags.map(createTag));
     proofListEl.replaceChildren(...showcase.proofPoints.map(createBulletItem));
-    updateMetrics(showcase, rendered.layout);
   } catch (error) {
     activeSummaryEl.textContent = error instanceof Error ? error.message : String(error);
     detailListEl.replaceChildren();
@@ -563,7 +572,6 @@ function activateShowcase(showcaseId: string, syncHash: boolean): void {
     proofListEl.replaceChildren(...showcase.proofPoints.map(createBulletItem));
     renderError(diagramEl, error);
     clearDiagramZoom();
-    clearMetrics();
   }
 }
 
@@ -587,24 +595,41 @@ function getRenderedShowcase(showcase: ShowcaseDefinition): { layout: DemoLayout
   return rendered;
 }
 
-function updateMetrics(showcase: ShowcaseDefinition, layout: DemoLayout): void {
-  showcase.metrics.forEach((metric, index) => {
+function renderLandingMetrics(): void {
+  landingMetrics.forEach((metric, index) => {
     const target = metricElements[index];
     if (!target) {
       return;
     }
     if (target.label) target.label.textContent = metric.label;
-    if (target.value) target.value.textContent = String(metric.value(layout));
+    if (target.value) target.value.textContent = String(metric.value);
     if (target.note) target.note.textContent = metric.note;
   });
 }
 
-function clearMetrics(): void {
-  for (const metric of metricElements) {
-    if (metric.label) metric.label.textContent = 'Unavailable';
-    if (metric.value) metric.value.textContent = '0';
-    if (metric.note) metric.note.textContent = 'Render error prevented metric calculation.';
-  }
+function createLandingMetrics(definitions: ShowcaseDefinition[]): LandingMetric[] {
+  return [
+    {
+      label: 'System Families',
+      value: definitions.length,
+      note: 'electrical, HVAC, network, fire alarm, and lighting control renderers',
+    },
+    {
+      label: 'Device Families',
+      value: countUniqueText(definitions.flatMap((definition) => definition.libraryTags)),
+      note: 'named device and equipment families surfaced across the shipped libraries',
+    },
+    {
+      label: 'Connection Styles',
+      value: TOOL_CONNECTION_STYLE_COUNT,
+      note: 'explicit wire, media, circuit, piping, and control-link treatments',
+    },
+    {
+      label: 'Layout Bands',
+      value: TOOL_LAYOUT_BAND_COUNT,
+      note: 'discipline lanes used to organize the lane-based renderers',
+    },
+  ];
 }
 
 function resolveInitialShowcaseId(): string {
@@ -995,4 +1020,8 @@ function collectParamValues(nodes: Array<{ params?: Record<string, string> }>, k
   }
 
   return values;
+}
+
+function countUniqueText(values: string[]): number {
+  return new Set(values.map((value) => value.toLowerCase())).size;
 }
