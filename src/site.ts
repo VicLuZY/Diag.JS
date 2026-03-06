@@ -16,9 +16,15 @@ const hvacMediaTagsEl = document.getElementById('hvacMediaTags');
 const hvacLaneTagsEl = document.getElementById('hvacLaneTags');
 const footerVersionEl = document.getElementById('footerVersion');
 
+const saveElectricalSvgButton = document.getElementById('saveElectricalSvg');
+const saveElectricalPngButton = document.getElementById('saveElectricalPng');
+const saveHvacSvgButton = document.getElementById('saveHvacSvg');
+const saveHvacPngButton = document.getElementById('saveHvacPng');
+
 renderElectricalShowcase();
 renderHvacShowcase();
 renderFooterVersion();
+wireDownloadButtons();
 
 function renderElectricalShowcase(): void {
   if (!electricalDiagramEl || !electricalSourceEl || !electricalSummaryEl || !electricalBranchListEl || !electricalVoltageTagsEl) {
@@ -112,6 +118,88 @@ function renderError(target: HTMLElement, error: unknown): void {
 function renderFooterVersion(): void {
   if (footerVersionEl) {
     footerVersionEl.textContent = siteVersion;
+  }
+}
+
+function wireDownloadButtons(): void {
+  saveElectricalSvgButton?.addEventListener('click', () => {
+    void saveDiagramSvg('electricalDiagram', 'diagjs-electrical.svg');
+  });
+
+  saveElectricalPngButton?.addEventListener('click', () => {
+    void saveDiagramPng('electricalDiagram', 'diagjs-electrical.png');
+  });
+
+  saveHvacSvgButton?.addEventListener('click', () => {
+    void saveDiagramSvg('hvacDiagram', 'diagjs-hvac.svg');
+  });
+
+  saveHvacPngButton?.addEventListener('click', () => {
+    void saveDiagramPng('hvacDiagram', 'diagjs-hvac.png');
+  });
+}
+
+async function saveDiagramSvg(containerId: string, fileName: string): Promise<void> {
+  const markup = getSerializedSvg(containerId);
+  if (!markup) {
+    return;
+  }
+
+  const blob = new Blob([markup], { type: 'image/svg+xml;charset=utf-8' });
+  triggerDownload(URL.createObjectURL(blob), fileName);
+}
+
+async function saveDiagramPng(containerId: string, fileName: string): Promise<void> {
+  const markup = getSerializedSvg(containerId);
+  if (!markup) {
+    return;
+  }
+
+  const image = new Image();
+  const svgBlob = new Blob([markup], { type: 'image/svg+xml;charset=utf-8' });
+  const objectUrl = URL.createObjectURL(svgBlob);
+
+  image.src = objectUrl;
+  await image.decode();
+
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+
+  const context = canvas.getContext('2d');
+  if (!context) {
+    URL.revokeObjectURL(objectUrl);
+    return;
+  }
+
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(image, 0, 0);
+
+  URL.revokeObjectURL(objectUrl);
+  triggerDownload(canvas.toDataURL('image/png'), fileName);
+}
+
+function getSerializedSvg(containerId: string): string | null {
+  const container = document.getElementById(containerId);
+  const svg = container?.querySelector('svg');
+  if (!svg) {
+    return null;
+  }
+
+  const clone = svg.cloneNode(true) as SVGElement;
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+  return new XMLSerializer().serializeToString(clone);
+}
+
+function triggerDownload(url: string, fileName: string): void {
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  if (url.startsWith('blob:')) {
+    URL.revokeObjectURL(url);
   }
 }
 
