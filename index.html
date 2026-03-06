@@ -359,6 +359,28 @@
         line-height: 1.05;
       }
 
+      .diagram-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .diagram-action {
+        border: 1px solid rgba(33, 55, 72, 0.26);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.9);
+        color: var(--accent);
+        font-weight: 700;
+        font-size: 0.82rem;
+        letter-spacing: 0.02em;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+
+      .diagram-action:hover {
+        background: #f0f5fa;
+      }
+
       .diagram-wrap {
         position: relative;
         max-height: min(78vh, 1100px);
@@ -605,7 +627,13 @@
                 <p class="eyebrow">Rendered From DSL</p>
                 <h3>Extensive building distribution model</h3>
               </div>
-              <p class="diagram-note">Source and SVG update together from the same inline example.</p>
+              <div>
+                <p class="diagram-note">Source and SVG update together from the same inline example.</p>
+                <div class="diagram-actions">
+                  <button type="button" class="diagram-action" id="saveElectricalSvg">Save SVG</button>
+                  <button type="button" class="diagram-action" id="saveElectricalPng">Save PNG</button>
+                </div>
+              </div>
             </header>
             <div class="diagram-wrap">
               <div class="diagram-canvas" id="electricalDiagram"></div>
@@ -700,7 +728,13 @@
                 <p class="eyebrow">Rendered From DSL</p>
                 <h3>Office tower HVAC plant and airside model</h3>
               </div>
-              <p class="diagram-note">The renderer keeps supply, return, plant, and controls readable by pinning nodes to explicit mechanical lanes.</p>
+              <div>
+                <p class="diagram-note">The renderer keeps supply, return, plant, and controls readable by pinning nodes to explicit mechanical lanes.</p>
+                <div class="diagram-actions">
+                  <button type="button" class="diagram-action" id="saveHvacSvg">Save SVG</button>
+                  <button type="button" class="diagram-action" id="saveHvacPng">Save PNG</button>
+                </div>
+              </div>
             </header>
             <div class="diagram-wrap">
               <div class="diagram-canvas" id="hvacDiagram"></div>
