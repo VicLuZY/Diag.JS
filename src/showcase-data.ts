@@ -1,6 +1,6 @@
 export const electricalShowcaseSource = `title "Building Electrical Distribution — Single-Line Diagram"
 node UTIL "Utility Service" symbol utility
-param UTIL voltage 13.8kV
+param UTIL voltage 25kV
 param UTIL fault 12kA
 node XFMR1 "XFMR-1" symbol transformer
 param XFMR1 rating 1500kVA
@@ -8,6 +8,7 @@ param XFMR1 secondary 480Y/277V
 node MSB "MSB-1" symbol switchboard
 param MSB type switchboard
 param MSB ampacity 3000A
+param MSB system 600V
 node XFLP "XFMR-LP" symbol transformer
 param XFLP rating 300kVA
 param XFLP secondary 208Y/120V

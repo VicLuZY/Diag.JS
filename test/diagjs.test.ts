@@ -113,7 +113,7 @@ test('renderSvg routes connections from the source right side to the target left
     edge a b
   `);
 
-  const match = svg.match(/data-edge-from="a" data-edge-to="b">[\s\S]*?<path d="M ([0-9.]+) ([0-9.]+) H ([0-9.]+) V ([0-9.]+) H ([0-9.]+)"/);
+  const match = svg.match(/data-edge-from="a" data-edge-to="b"[^>]*>[\s\S]*?<path d="M ([0-9.]+) ([0-9.]+) H ([0-9.]+) V ([0-9.]+) H ([0-9.]+)"/);
   assert.ok(match);
 
   const startX = Number(match[1]);
