@@ -5,6 +5,36 @@ const NODE_RE = new RegExp(`^node\\s+(${NODE_ID_RE})\\s+"([^"]+)"(?:\\s+symbol\\
 const EDGE_RE = new RegExp(`^edge\\s+(${NODE_ID_RE})\\s+(${NODE_ID_RE})(?:\\s+"([^"]+)")?$`);
 const PARAM_RE = new RegExp(`^param\\s+(${NODE_ID_RE})\\s+([A-Za-z][A-Za-z0-9_-]*)\\s+(?:"([^"]*)"|(\\S+))$`);
 
+const SYMBOL_ALIASES = {
+  gen: 'generator',
+  genset: 'generator',
+  utility_service: 'utility',
+  xfmr: 'transformer',
+  tx: 'transformer',
+  swbd: 'switchboard',
+  switchgear: 'switchboard',
+  panelboard: 'panel',
+  mcp: 'panel',
+  cb: 'breaker',
+  ocpd: 'breaker',
+  breaker_switch: 'breaker',
+  disco: 'disconnect',
+  isolator: 'disconnect',
+  knife_switch: 'disconnect',
+  transfer_switch: 'ats',
+  static_switch: 'ats',
+  photovoltaic: 'solar',
+  pv: 'solar',
+  pcs: 'inverter',
+  converter: 'inverter',
+  capacitor_bank: 'capacitor',
+  cap_bank: 'capacitor',
+  metering: 'meter',
+  protection_relay: 'relay',
+  hx: 'heat_exchanger',
+  load: 'equipment',
+};
+
 const SYMBOL_LIBRARY = {
   utility: {
     typeLabel: 'UTILITY',
@@ -54,6 +84,146 @@ const SYMBOL_LIBRARY = {
     innerFill: '#fbfefc',
     stroke: '#2f6251',
     accent: '#2f6251',
+    labelChars: 18,
+  },
+  generator: {
+    typeLabel: 'GEN',
+    width: 184,
+    height: 104,
+    fill: '#f9f7ef',
+    innerFill: '#fffdf7',
+    stroke: '#7d6331',
+    accent: '#7d6331',
+    labelChars: 18,
+  },
+  breaker: {
+    typeLabel: 'CB',
+    width: 150,
+    height: 98,
+    fill: '#f8fafb',
+    innerFill: '#ffffff',
+    stroke: '#415667',
+    accent: '#415667',
+    labelChars: 16,
+  },
+  disconnect: {
+    typeLabel: 'DISC',
+    width: 150,
+    height: 98,
+    fill: '#faf8f2',
+    innerFill: '#ffffff',
+    stroke: '#6f6658',
+    accent: '#6f6658',
+    labelChars: 16,
+  },
+  fuse: {
+    typeLabel: 'FUSE',
+    width: 146,
+    height: 96,
+    fill: '#faf7f0',
+    innerFill: '#ffffff',
+    stroke: '#7f6a45',
+    accent: '#7f6a45',
+    labelChars: 16,
+  },
+  ats: {
+    typeLabel: 'ATS',
+    width: 178,
+    height: 104,
+    fill: '#f4f9fc',
+    innerFill: '#fbfdfe',
+    stroke: '#2f516c',
+    accent: '#2f516c',
+    labelChars: 18,
+  },
+  ups: {
+    typeLabel: 'UPS',
+    width: 170,
+    height: 102,
+    fill: '#f7f9fb',
+    innerFill: '#ffffff',
+    stroke: '#536776',
+    accent: '#536776',
+    labelChars: 18,
+  },
+  battery: {
+    typeLabel: 'BATT',
+    width: 162,
+    height: 100,
+    fill: '#f8faf7',
+    innerFill: '#ffffff',
+    stroke: '#586b53',
+    accent: '#586b53',
+    labelChars: 17,
+  },
+  solar: {
+    typeLabel: 'PV',
+    width: 172,
+    height: 102,
+    fill: '#fffbee',
+    innerFill: '#fffef8',
+    stroke: '#97761f',
+    accent: '#97761f',
+    labelChars: 17,
+  },
+  inverter: {
+    typeLabel: 'INV',
+    width: 164,
+    height: 100,
+    fill: '#f5f9fc',
+    innerFill: '#ffffff',
+    stroke: '#3d6079',
+    accent: '#3d6079',
+    labelChars: 17,
+  },
+  meter: {
+    typeLabel: 'METER',
+    width: 150,
+    height: 96,
+    fill: '#f7f9fb',
+    innerFill: '#ffffff',
+    stroke: '#586776',
+    accent: '#586776',
+    labelChars: 16,
+  },
+  capacitor: {
+    typeLabel: 'CAP',
+    width: 150,
+    height: 96,
+    fill: '#fbfaf4',
+    innerFill: '#ffffff',
+    stroke: '#85724f',
+    accent: '#85724f',
+    labelChars: 16,
+  },
+  relay: {
+    typeLabel: 'RELAY',
+    width: 156,
+    height: 98,
+    fill: '#f6f9fb',
+    innerFill: '#ffffff',
+    stroke: '#4f6676',
+    accent: '#4f6676',
+    labelChars: 16,
+  },
+  ground: {
+    typeLabel: 'GND',
+    width: 138,
+    height: 92,
+    fill: '#f7f9fa',
+    innerFill: '#ffffff',
+    stroke: '#5c6872',
+    accent: '#5c6872',
+    labelChars: 16,
+  },
+  busway: {
+    typeLabel: 'BUS',
+    width: 176,
+    height: 94,
+    fill: '#f4f8fb',
+    innerFill: '#fbfdfe',
+    stroke: '#355268',
+    accent: '#355268',
     labelChars: 18,
   },
   motor: {
@@ -162,7 +332,8 @@ function escapeXml(text) {
 }
 
 function normalizeSymbol(symbolType) {
-  return String(symbolType ?? 'device').toLowerCase().replace(/-/g, '_');
+  const normalized = String(symbolType ?? 'device').toLowerCase().replace(/-/g, '_');
+  return SYMBOL_ALIASES[normalized] ?? normalized;
 }
 
 function inferSymbol(node) {
@@ -172,6 +343,12 @@ function inferSymbol(node) {
 
   const probe = `${node.id} ${node.label}`.toLowerCase();
 
+  if (probe.includes('generator') || /\bgen(set)?\b/.test(probe)) {
+    return 'generator';
+  }
+  if (probe.includes('meter')) {
+    return 'meter';
+  }
   if (probe.includes('utility')) {
     return 'utility';
   }
@@ -181,8 +358,47 @@ function inferSymbol(node) {
   if (probe.includes('switchboard') || probe.includes('msb')) {
     return 'switchboard';
   }
+  if (probe.includes('switchgear')) {
+    return 'switchboard';
+  }
   if (probe.includes('mcc')) {
     return 'mcc';
+  }
+  if (probe.includes('breaker') || /\bcb\b/.test(probe)) {
+    return 'breaker';
+  }
+  if (probe.includes('disconnect') || probe.includes('isolator')) {
+    return 'disconnect';
+  }
+  if (probe.includes('fuse')) {
+    return 'fuse';
+  }
+  if (probe.includes('ats') || probe.includes('transfer switch')) {
+    return 'ats';
+  }
+  if (probe.includes('ups')) {
+    return 'ups';
+  }
+  if (probe.includes('battery')) {
+    return 'battery';
+  }
+  if (probe.includes('solar') || /\bpv\b/.test(probe) || probe.includes('photovoltaic')) {
+    return 'solar';
+  }
+  if (probe.includes('inverter') || /\binv\b/.test(probe)) {
+    return 'inverter';
+  }
+  if (probe.includes('capacitor')) {
+    return 'capacitor';
+  }
+  if (probe.includes('relay')) {
+    return 'relay';
+  }
+  if (probe.includes('ground')) {
+    return 'ground';
+  }
+  if (probe.includes('busway') || probe.includes('bus duct') || /\bbus\b/.test(probe)) {
+    return 'busway';
   }
   if (probe.includes('panel') || /\b(lp|rp|dp)-?\d*/.test(probe)) {
     return 'panel';
@@ -363,6 +579,115 @@ function renderSymbolGlyph(symbolType, x, y, width, height, spec) {
         <rect x="${bodyX + 8}" y="${bodyY + 26}" width="${bucketWidth}" height="${bodyH - 36}" rx="5" fill="#ffffff" stroke="#a8beb3" stroke-width="1"/>
         <rect x="${bodyX + 8 + bucketWidth + 8}" y="${bodyY + 26}" width="${bucketWidth}" height="${bodyH - 36}" rx="5" fill="#ffffff" stroke="#a8beb3" stroke-width="1"/>
         <rect x="${bodyX + 8 + (bucketWidth + 8) * 2}" y="${bodyY + 26}" width="${bucketWidth}" height="${bodyH - 36}" rx="5" fill="#ffffff" stroke="#a8beb3" stroke-width="1"/>`;
+    }
+    case 'generator': {
+      const r = Math.min(width, height) * 0.24;
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+        <path d="M ${cx - r * 1.7} ${cy} H ${cx - r * 0.4} M ${cx + r * 0.4} ${cy} H ${cx + r * 1.7}" fill="none" stroke="${stroke}" stroke-width="1.6" stroke-linecap="round"/>
+        <text x="${cx}" y="${cy + 6}" text-anchor="middle" font-family="Georgia, serif" font-size="${Math.round(r * 0.95)}" font-weight="700" fill="${accent}">G</text>
+        <path d="M ${cx - r * 0.75} ${cy - r * 1.18} Q ${cx} ${cy - r * 1.5} ${cx + r * 0.75} ${cy - r * 1.18}" fill="none" stroke="${accent}" stroke-width="1.3" stroke-linecap="round"/>`;
+    }
+    case 'breaker': {
+      const leftX = cx - width * 0.18;
+      const rightX = cx + width * 0.18;
+      return `<path d="M ${x + 12} ${cy} H ${leftX - 6} M ${rightX + 6} ${cy} H ${x + width - 12}" fill="none" stroke="${stroke}" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="${leftX}" cy="${cy}" r="4.5" fill="#ffffff" stroke="${stroke}" stroke-width="1.6"/>
+        <circle cx="${rightX}" cy="${cy}" r="4.5" fill="#ffffff" stroke="${stroke}" stroke-width="1.6"/>
+        <path d="M ${leftX + 4} ${cy - 14} L ${rightX - 4} ${cy + 8}" fill="none" stroke="${accent}" stroke-width="2.1" stroke-linecap="round"/>`;
+    }
+    case 'disconnect': {
+      const leftX = cx - width * 0.18;
+      const rightX = cx + width * 0.18;
+      return `<path d="M ${x + 12} ${cy} H ${leftX - 6} M ${rightX + 6} ${cy} H ${x + width - 12}" fill="none" stroke="${stroke}" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="${leftX}" cy="${cy}" r="4.5" fill="#ffffff" stroke="${stroke}" stroke-width="1.6"/>
+        <circle cx="${rightX}" cy="${cy}" r="4.5" fill="#ffffff" stroke="${stroke}" stroke-width="1.6"/>
+        <path d="M ${leftX + 4} ${cy} L ${rightX - 8} ${cy - 16}" fill="none" stroke="${accent}" stroke-width="2.1" stroke-linecap="round"/>
+        <circle cx="${rightX - 5}" cy="${cy - 16}" r="2.8" fill="${accent}"/>`;
+    }
+    case 'fuse': {
+      const bodyX = cx - width * 0.18;
+      const bodyY = cy - height * 0.12;
+      const bodyW = width * 0.36;
+      const bodyH = height * 0.24;
+      return `<path d="M ${x + 12} ${cy} H ${bodyX} M ${bodyX + bodyW} ${cy} H ${x + width - 12}" fill="none" stroke="${stroke}" stroke-width="1.6" stroke-linecap="round"/>
+        <rect x="${bodyX}" y="${bodyY}" width="${bodyW}" height="${bodyH}" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="1.7"/>
+        <path d="M ${bodyX + 10} ${cy} H ${bodyX + bodyW - 10}" fill="none" stroke="${accent}" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M ${cx - 10} ${cy - 8} L ${cx + 10} ${cy + 8}" fill="none" stroke="${accent}" stroke-width="1.6" stroke-linecap="round"/>`;
+    }
+    case 'ats': {
+      const bodyX = x + 18;
+      const bodyY = y + 12;
+      const bodyW = width - 36;
+      const bodyH = height - 24;
+      return `<rect x="${bodyX}" y="${bodyY}" width="${bodyW}" height="${bodyH}" rx="12" fill="${fill}" stroke="${stroke}" stroke-width="1.8"/>
+        <path d="M ${bodyX + 18} ${cy - 16} H ${cx - 10} L ${cx + 8} ${cy} L ${cx - 10} ${cy + 16} H ${bodyX + 18}" fill="none" stroke="${accent}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M ${bodyX + bodyW - 18} ${cy - 16} H ${cx + 10} M ${bodyX + bodyW - 18} ${cy + 16} H ${cx + 10}" fill="none" stroke="${accent}" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="${cx}" cy="${cy}" r="4" fill="${accent}"/>`;
+    }
+    case 'ups': {
+      const bodyX = x + 20;
+      const bodyY = y + 10;
+      const bodyW = width - 40;
+      const bodyH = height - 20;
+      return `<rect x="${bodyX}" y="${bodyY}" width="${bodyW}" height="${bodyH}" rx="12" fill="${fill}" stroke="${stroke}" stroke-width="1.8"/>
+        <path d="M ${bodyX + 14} ${cy} C ${bodyX + 28} ${cy - 10}, ${bodyX + 36} ${cy + 10}, ${bodyX + 50} ${cy} S ${bodyX + 72} ${cy - 10}, ${bodyX + 86} ${cy}" fill="none" stroke="${accent}" stroke-width="1.7" stroke-linecap="round"/>
+        <rect x="${bodyX + bodyW - 34}" y="${cy - 12}" width="18" height="24" rx="4" fill="#ffffff" stroke="${stroke}" stroke-width="1.2"/>
+        <path d="M ${bodyX + bodyW - 12} ${cy - 4} H ${bodyX + bodyW - 8} M ${bodyX + bodyW - 12} ${cy + 4} H ${bodyX + bodyW - 8}" fill="none" stroke="${stroke}" stroke-width="1.2" stroke-linecap="round"/>`;
+    }
+    case 'battery': {
+      const bodyX = cx - width * 0.16;
+      const bodyY = cy - height * 0.14;
+      const bodyW = width * 0.32;
+      const bodyH = height * 0.28;
+      return `<rect x="${bodyX}" y="${bodyY}" width="${bodyW}" height="${bodyH}" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="1.7"/>
+        <rect x="${bodyX + bodyW}" y="${cy - 8}" width="8" height="16" rx="2" fill="${fill}" stroke="${stroke}" stroke-width="1.2"/>
+        <path d="M ${bodyX + 16} ${cy} H ${bodyX + 30} M ${bodyX + 54} ${cy} H ${bodyX + 68} M ${bodyX + 61} ${cy - 7} V ${cy + 7}" fill="none" stroke="${accent}" stroke-width="1.7" stroke-linecap="round"/>`;
+    }
+    case 'solar': {
+      const panelX = cx - width * 0.16;
+      const panelY = cy - height * 0.02;
+      const panelW = width * 0.32;
+      const panelH = height * 0.22;
+      return `<circle cx="${cx + panelW * 0.45}" cy="${cy - panelH - 12}" r="9" fill="#fff7c7" stroke="${accent}" stroke-width="1.3"/>
+        <path d="M ${cx + panelW * 0.45} ${cy - panelH - 28} V ${cy - panelH - 22} M ${cx + panelW * 0.45} ${cy - panelH - 2} V ${cy - panelH + 4} M ${cx + panelW * 0.45 - 14} ${cy - panelH - 12} H ${cx + panelW * 0.45 - 8} M ${cx + panelW * 0.45 + 8} ${cy - panelH - 12} H ${cx + panelW * 0.45 + 14}" fill="none" stroke="${accent}" stroke-width="1.2" stroke-linecap="round"/>
+        <rect x="${panelX}" y="${panelY}" width="${panelW}" height="${panelH}" rx="6" fill="${fill}" stroke="${stroke}" stroke-width="1.7"/>
+        <path d="M ${panelX + panelW / 3} ${panelY} V ${panelY + panelH} M ${panelX + (panelW / 3) * 2} ${panelY} V ${panelY + panelH} M ${panelX} ${panelY + panelH / 2} H ${panelX + panelW}" fill="none" stroke="${accent}" stroke-width="1.1"/>`;
+    }
+    case 'inverter': {
+      const bodyX = x + 18;
+      const bodyY = y + 12;
+      const bodyW = width - 36;
+      const bodyH = height - 24;
+      return `<rect x="${bodyX}" y="${bodyY}" width="${bodyW}" height="${bodyH}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="1.8"/>
+        <path d="M ${bodyX + 18} ${cy} C ${bodyX + 26} ${cy - 10}, ${bodyX + 36} ${cy + 10}, ${bodyX + 46} ${cy} S ${bodyX + 66} ${cy - 10}, ${bodyX + 76} ${cy}" fill="none" stroke="${accent}" stroke-width="1.7" stroke-linecap="round"/>
+        <path d="M ${bodyX + bodyW - 70} ${cy - 10} L ${bodyX + bodyW - 42} ${cy} L ${bodyX + bodyW - 70} ${cy + 10}" fill="none" stroke="${accent}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M ${bodyX + bodyW - 70} ${cy} H ${bodyX + bodyW - 22}" fill="none" stroke="${accent}" stroke-width="1.8" stroke-linecap="round"/>`;
+    }
+    case 'meter': {
+      const r = Math.min(width, height) * 0.22;
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+        <path d="M ${cx} ${cy} L ${cx + r * 0.62} ${cy - r * 0.38}" fill="none" stroke="${accent}" stroke-width="1.9" stroke-linecap="round"/>
+        <path d="M ${cx - r * 0.72} ${cy + r * 0.46} Q ${cx} ${cy + r * 0.84} ${cx + r * 0.72} ${cy + r * 0.46}" fill="none" stroke="${accent}" stroke-width="1.3" stroke-linecap="round"/>`;
+    }
+    case 'capacitor': {
+      return `<path d="M ${x + 18} ${cy} H ${cx - 16} M ${cx + 16} ${cy} H ${x + width - 18}" fill="none" stroke="${stroke}" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M ${cx - 8} ${cy - 16} V ${cy + 16} M ${cx + 8} ${cy - 16} V ${cy + 16}" fill="none" stroke="${accent}" stroke-width="2" stroke-linecap="round"/>`;
+    }
+    case 'relay': {
+      const bodyX = x + 20;
+      const bodyY = y + 12;
+      const bodyW = width - 40;
+      const bodyH = height - 24;
+      return `<rect x="${bodyX}" y="${bodyY}" width="${bodyW}" height="${bodyH}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="1.8"/>
+        <path d="M ${bodyX + 18} ${cy + 10} q 6 -20 12 0 t 12 0 t 12 0" fill="none" stroke="${accent}" stroke-width="1.7" stroke-linecap="round"/>
+        <path d="M ${bodyX + bodyW - 44} ${cy - 12} V ${cy + 12} M ${bodyX + bodyW - 32} ${cy - 4} L ${bodyX + bodyW - 16} ${cy - 12}" fill="none" stroke="${accent}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`;
+    }
+    case 'ground': {
+      return `<path d="M ${cx} ${cy - 20} V ${cy - 2} M ${cx - 18} ${cy - 2} H ${cx + 18} M ${cx - 12} ${cy + 6} H ${cx + 12} M ${cx - 6} ${cy + 14} H ${cx + 6}" fill="none" stroke="${accent}" stroke-width="1.9" stroke-linecap="round"/>`;
+    }
+    case 'busway': {
+      return `<path d="M ${x + 18} ${cy} H ${x + width - 18}" fill="none" stroke="${accent}" stroke-width="6" stroke-linecap="round"/>
+        <path d="M ${cx - 34} ${cy - 16} V ${cy + 16} M ${cx} ${cy - 16} V ${cy + 16} M ${cx + 34} ${cy - 16} V ${cy + 16}" fill="none" stroke="${stroke}" stroke-width="1.5" stroke-linecap="round"/>`;
     }
     case 'motor': {
       const r = Math.min(width, height) * 0.27;

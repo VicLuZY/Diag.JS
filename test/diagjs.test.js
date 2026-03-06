@@ -113,3 +113,56 @@ test('renderSvg routes connections from the source right side to the target left
   assert.ok(startX < laneX);
   assert.ok(laneX < endX);
 });
+
+test('renderSvg supports expanded electrical symbol aliases', () => {
+  const svg = renderSvg(`
+    node gen1 "Emergency Generator" symbol gen
+    node cb1 "Main Breaker" symbol cb
+    node ds1 "Service Disconnect" symbol disco
+    node ats1 "Automatic Transfer Switch" symbol transfer-switch
+    node ups1 "UPS-1" symbol ups
+    node batt1 "Battery Bank" symbol battery
+    node pv1 "PV Array" symbol pv
+    node inv1 "Inverter" symbol converter
+    node mtr1 "Revenue Meter" symbol metering
+    node cap1 "Capacitor Bank" symbol capacitor-bank
+    node rel1 "Protective Relay" symbol protection-relay
+    node grd1 "Ground Grid" symbol ground
+  `);
+
+  assert.match(svg, /data-id="gen1" data-symbol="generator"/);
+  assert.match(svg, /data-id="cb1" data-symbol="breaker"/);
+  assert.match(svg, /data-id="ds1" data-symbol="disconnect"/);
+  assert.match(svg, /data-id="ats1" data-symbol="ats"/);
+  assert.match(svg, /data-id="ups1" data-symbol="ups"/);
+  assert.match(svg, /data-id="batt1" data-symbol="battery"/);
+  assert.match(svg, /data-id="pv1" data-symbol="solar"/);
+  assert.match(svg, /data-id="inv1" data-symbol="inverter"/);
+  assert.match(svg, /data-id="mtr1" data-symbol="meter"/);
+  assert.match(svg, /data-id="cap1" data-symbol="capacitor"/);
+  assert.match(svg, /data-id="rel1" data-symbol="relay"/);
+  assert.match(svg, /data-id="grd1" data-symbol="ground"/);
+});
+
+test('renderSvg infers broader symbol families from device names', () => {
+  const svg = renderSvg(`
+    node gen "Emergency Generator"
+    node ats "ATS-1"
+    node meter "Utility Meter"
+    node cap "Capacitor Bank"
+    node relay "Protective Relay"
+    node bus "Bus Duct Section"
+    edge gen ats
+    edge ats meter
+    edge meter cap
+    edge cap relay
+    edge relay bus
+  `);
+
+  assert.match(svg, /data-id="gen" data-symbol="generator"/);
+  assert.match(svg, /data-id="ats" data-symbol="ats"/);
+  assert.match(svg, /data-id="meter" data-symbol="meter"/);
+  assert.match(svg, /data-id="cap" data-symbol="capacitor"/);
+  assert.match(svg, /data-id="relay" data-symbol="relay"/);
+  assert.match(svg, /data-id="bus" data-symbol="busway"/);
+});
