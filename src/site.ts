@@ -1,5 +1,6 @@
 import { compileDiagram, compileHvacDiagram, parseDiagram, renderHvacSvg, renderSvg } from './index';
 import { electricalPrimaryFeeders, electricalShowcaseSource, hvacShowcaseSource, hvacSystems } from './showcase-data';
+import { siteVersion } from './version';
 
 const electricalDiagramEl = document.getElementById('electricalDiagram');
 const electricalSourceEl = document.querySelector('#electricalSource code');
@@ -13,9 +14,11 @@ const hvacSummaryEl = document.getElementById('hvacSummary');
 const hvacBranchListEl = document.getElementById('hvacBranchList');
 const hvacMediaTagsEl = document.getElementById('hvacMediaTags');
 const hvacLaneTagsEl = document.getElementById('hvacLaneTags');
+const footerVersionEl = document.getElementById('footerVersion');
 
 renderElectricalShowcase();
 renderHvacShowcase();
+renderFooterVersion();
 
 function renderElectricalShowcase(): void {
   if (!electricalDiagramEl || !electricalSourceEl || !electricalSummaryEl || !electricalBranchListEl || !electricalVoltageTagsEl) {
@@ -104,6 +107,12 @@ function createTag(text: string): HTMLSpanElement {
 function renderError(target: HTMLElement, error: unknown): void {
   const message = error instanceof Error ? error.message : String(error);
   target.innerHTML = `<p style="color:#b91c1c; padding:1rem;">Render error: ${message}</p>`;
+}
+
+function renderFooterVersion(): void {
+  if (footerVersionEl) {
+    footerVersionEl.textContent = siteVersion;
+  }
 }
 
 function collectVoltages(nodes: Array<{ params?: Record<string, string> }>): string[] {
