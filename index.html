@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="./assets/diagjs-logo.svg" />
-    <title>Diag.JS | Multi-discipline schematic renderer</title>
+    <title>Diag.JS | Text-first system diagrams</title>
     <style>
       :root {
         color-scheme: light;
@@ -647,44 +647,45 @@
           <div class="brand-lockup">
             <img class="brand-mark" src="./assets/diagjs-logo.svg" alt="Diag.JS logo" width="76" height="76" />
             <div>
-              <p class="eyebrow">Diag.JS / Typed Diagram Engine</p>
-              <p class="brand-copy">Text-to-SVG schematics for electrical, HVAC, network, fire alarm, and lighting control systems.</p>
+              <p class="eyebrow">Diag.JS / Text-First Diagram Platform</p>
+              <p class="brand-copy">A shared DSL, renderer stack, and documentation system for maintainable infrastructure diagrams.</p>
             </div>
           </div>
-          <h1>Author building-system schematics from one concise DSL.</h1>
+          <h1>Write system intent once. Render diagrams teams can review, ship, and extend.</h1>
           <p class="lede">
-            Diag.JS turns short text models into exportable SVG drawings across five building-system disciplines. The
-            tool combines discipline-specific symbol libraries, lane-aware layout, and renderer-specific connection
-            styling so one authoring model can scale from single-line distribution to campus-scale system diagrams.
+            Diag.JS is for engineers, integrators, and library authors who want diagrams to behave like maintainable
+            source instead of one-off drawings. Today it turns a shared DSL into exportable schematics across power,
+            HVAC, network, fire alarm, and lighting control. As the platform develops, the same foundation is meant to
+            support broader system coverage, stricter validation, richer libraries, and deeper reference tooling.
           </p>
           <div class="hero-actions">
-            <a class="button" href="./docs/">Read Documentation</a>
-            <a class="button" href="#demo-showcase">Explore Live Workspace</a>
-            <a class="button secondary" href="https://github.com/VicLuZY/Diag.JS">View Repository</a>
-            <span class="footer-note">The homepage now exposes both the interactive workspace and the full documentation site.</span>
+            <a class="button" href="./docs/">Open Documentation</a>
+            <a class="button" href="#demo-showcase">Open Workspace</a>
+            <a class="button secondary" href="https://github.com/VicLuZY/Diag.JS">View on GitHub</a>
+            <span class="footer-note">Start with the docs, then inspect how the same language renders across the shipped systems.</span>
           </div>
         </div>
 
         <aside class="hero-stats" aria-label="Diag.JS overview">
           <article class="stat-card stat-card-hero">
-            <span class="stat-label" data-metric-label="0">System Families</span>
+            <span class="stat-label" data-metric-label="0">Supported Systems</span>
             <strong class="stat-value" data-metric-value="0">5</strong>
-            <span class="stat-note" data-metric-note="0">electrical, HVAC, network, fire alarm, and lighting control renderers</span>
+            <span class="stat-note" data-metric-note="0">renderer families currently shipped across the platform</span>
           </article>
           <article class="stat-card">
             <span class="stat-label" data-metric-label="1">Device Families</span>
             <strong class="stat-value" data-metric-value="1">101</strong>
-            <span class="stat-note" data-metric-note="1">named device and equipment families surfaced across the shipped libraries</span>
+            <span class="stat-note" data-metric-note="1">named equipment and device families available in the shipped libraries</span>
           </article>
           <article class="stat-card">
-            <span class="stat-label" data-metric-label="2">Connection Styles</span>
+            <span class="stat-label" data-metric-label="2">Connection Semantics</span>
             <strong class="stat-value" data-metric-value="2">42</strong>
-            <span class="stat-note" data-metric-note="2">explicit wire, media, circuit, piping, and control-link treatments</span>
+            <span class="stat-note" data-metric-note="2">visual and logical connection treatments encoded by the renderers</span>
           </article>
           <article class="stat-card">
             <span class="stat-label" data-metric-label="3">Layout Bands</span>
             <strong class="stat-value" data-metric-value="3">31</strong>
-            <span class="stat-note" data-metric-note="3">discipline lanes used to organize the lane-based renderers</span>
+            <span class="stat-note" data-metric-note="3">reusable lane definitions used by the band-aware systems</span>
           </article>
         </aside>
       </section>
@@ -693,59 +694,60 @@
         <div class="docs-grid">
           <div>
             <p class="eyebrow">Documentation</p>
-            <h2>Reference the language, renderer behavior, and source-backed libraries from the same site.</h2>
+            <h2>Treat the docs as the contract for the language, libraries, and future growth of the platform.</h2>
             <p class="lede" style="margin-top: 18px; max-width: 68ch;">
-              The documentation site covers the DSL grammar, statement syntax, parameter semantics, rendering model,
-              system-specific authoring guidance, generated symbol and media inventories, public API, architecture, and
-              contribution rules. It is built with VitePress and published alongside the demo at
+              The documentation site is organized for both daily use and extension work: how to write valid DSL, how
+              each renderer interprets it, how equipment types and connection classes are defined, and what standards
+              new systems should follow as the platform expands. It is built with VitePress and published alongside the
+              app at
               <a href="./docs/" style="color: var(--accent); text-decoration: none; font-weight: 700;"><code>/docs/</code></a>.
             </p>
             <div class="docs-points">
               <article class="card docs-card">
-                <p class="eyebrow">Language</p>
-                <h3>Grammar, syntax, params, and validation</h3>
-                <p>Every statement form, reserved parameter, fallback rule, and current parser/compiler error is documented explicitly.</p>
+                <p class="eyebrow">Core Language</p>
+                <h3>Grammar, statements, and defaults</h3>
+                <p>The docs define the tokens, statement forms, parameter rules, ordering constraints, and validation behavior authors rely on.</p>
               </article>
               <article class="card docs-card">
-                <p class="eyebrow">Systems</p>
-                <h3>Per-renderer guides</h3>
-                <p>Electrical, HVAC, network, fire alarm, and lighting control each have dedicated authoring guidance and examples.</p>
+                <p class="eyebrow">System Guides</p>
+                <h3>Renderer-specific authoring patterns</h3>
+                <p>Each system guide explains what the renderer supports today, how its layout model works, and which conventions future additions should inherit.</p>
               </article>
               <article class="card docs-card">
-                <p class="eyebrow">Reference</p>
-                <h3>Generated device, lane, and media inventories</h3>
-                <p>Symbol families, aliases, lanes, wire types, and media classes are generated from source so the docs scale with the codebase.</p>
+                <p class="eyebrow">Reference Data</p>
+                <h3>Generated equipment and connection catalogs</h3>
+                <p>Device families, aliases, lanes, media classes, and voltage or control strata are generated from source so the reference grows with the codebase.</p>
               </article>
               <article class="card docs-card">
-                <p class="eyebrow">Contributing</p>
-                <h3>Rules for extending both code and docs</h3>
-                <p>The docs explain how to add systems, devices, and generated reference coverage without drifting from the implementation.</p>
+                <p class="eyebrow">Contribution Rules</p>
+                <h3>How to extend the platform without drift</h3>
+                <p>The docs set naming, coverage, and review expectations so new grammar, systems, and devices remain coherent as the platform grows.</p>
               </article>
             </div>
             <div class="docs-actions">
-              <a class="button" href="./docs/">Open Documentation</a>
-              <a class="button secondary" href="./docs/language/grammar">Read the Grammar</a>
+              <a class="button" href="./docs/">Browse Documentation</a>
+              <a class="button secondary" href="./docs/language/grammar">Start with the Grammar</a>
             </div>
           </div>
 
           <aside class="docs-summary">
             <article class="card">
-              <p class="eyebrow">Docs Coverage</p>
-              <h3>What is documented</h3>
+              <p class="eyebrow">How Teams Use It</p>
+              <h3>Author, review, and scale from the same source</h3>
               <ul class="list">
-                <li>Grammar, lexical rules, statement formats, ordering constraints, and validation errors.</li>
-                <li>Parameter semantics, renderer behavior, heuristics, wire/media inference, and layout controls.</li>
-                <li>Public API usage, architecture, equipment modeling, extensibility, and contribution workflow.</li>
-                <li>Generated reference pages for symbols, aliases, lanes, voltage strata, and connection classes.</li>
+                <li>Draft a model in text and keep it diffable in version control.</li>
+                <li>Review the rendered SVG beside the source instead of maintaining separate drawing files.</li>
+                <li>Reuse one language across multiple systems while keeping renderer-specific semantics where they matter.</li>
+                <li>Expand the platform through documented equipment libraries and generated reference pages.</li>
               </ul>
             </article>
 
             <article class="card">
-              <p class="eyebrow">Deployment</p>
-              <h3>Published with the main site</h3>
+              <p class="eyebrow">Built To Grow</p>
+              <h3>Structured for new systems and device families</h3>
               <p style="margin-top: 10px;">
-                The main site build now includes the VitePress output under <code>/docs/</code>, so the documentation
-                is visible from the homepage and deploys with the rest of the app.
+                The site is split into language rules, renderer guides, generated reference data, and contribution
+                standards so future systems can slot in without forcing a rewrite of the documentation model.
               </p>
             </article>
           </aside>
@@ -755,11 +757,12 @@
       <section class="showcase" id="demo-showcase">
         <div class="showcase-head">
           <div>
-            <p class="eyebrow">Live Workspace</p>
-            <h2 id="activeSectionTitle">Building electrical distribution single-line diagram</h2>
+            <p class="eyebrow">Interactive Workspace</p>
+            <h2 id="activeSectionTitle">See how one authoring model adapts to multiple system renderers</h2>
           </div>
           <p class="section-copy" id="activeSummary">
-            Inspect the built-in examples to see how the shared authoring model adapts to each renderer.
+            This workspace reflects the intended workflow: inspect the DSL, review the rendered SVG, and compare how
+            each renderer turns shared language rules into discipline-specific output.
           </p>
         </div>
 
@@ -775,8 +778,8 @@
           <section class="source-panel" aria-label="Example source code">
             <header class="source-meta">
               <div>
-                <p class="eyebrow">Example Source</p>
-                <h3 id="sourceTitle">DSL used for the electrical showcase</h3>
+                <p class="eyebrow">Source Model</p>
+                <h3 id="sourceTitle">Current example input</h3>
               </div>
             </header>
             <div class="source-wrap">
@@ -787,19 +790,19 @@
           <section class="diagram-panel" aria-label="Rendered diagram showcase">
             <header class="diagram-meta">
               <div>
-                <p class="eyebrow">Rendered From DSL</p>
-                <h3 id="diagramTitle">Extensive building distribution model</h3>
+                <p class="eyebrow">Rendered Output</p>
+                <h3 id="diagramTitle">Diagram generated from the source model</h3>
               </div>
               <div class="diagram-toolbar">
-                <p class="diagram-note" id="diagramNote">Source and SVG update together from the same inline DSL example.</p>
+                <p class="diagram-note" id="diagramNote">The source and renderer stay in sync so you can evaluate structure, notation, and exports side by side.</p>
                 <div class="diagram-actions">
-                  <span class="zoom-readout" id="diagramZoomValue" aria-live="polite">Fit</span>
+                  <span class="zoom-readout" id="diagramZoomValue" aria-live="polite">Fit View</span>
                   <button type="button" class="diagram-action" id="zoomOutDiagram" aria-label="Zoom out">-</button>
                   <button type="button" class="diagram-action" id="zoomInDiagram" aria-label="Zoom in">+</button>
                   <button type="button" class="diagram-action" id="zoomActualDiagram">100%</button>
-                  <button type="button" class="diagram-action" id="zoomFitDiagram">Full View</button>
-                  <button type="button" class="diagram-action" id="saveActiveSvg">Save SVG</button>
-                  <button type="button" class="diagram-action" id="saveActivePng">Save PNG</button>
+                  <button type="button" class="diagram-action" id="zoomFitDiagram">Fit View</button>
+                  <button type="button" class="diagram-action" id="saveActiveSvg">Export SVG</button>
+                  <button type="button" class="diagram-action" id="saveActivePng">Export PNG</button>
                 </div>
               </div>
             </header>
@@ -811,32 +814,32 @@
 
         <div class="showcase-details">
           <article class="card">
-            <p class="eyebrow" id="detailEyebrow">Major Branches</p>
-            <h3 id="detailTitle">Main downstream equipment</h3>
+            <p class="eyebrow" id="detailEyebrow">Use Case</p>
+            <h3 id="detailTitle">System groups in the current example</h3>
             <ul class="list" id="detailList"></ul>
           </article>
 
           <article class="card">
-            <p class="eyebrow" id="tagGroupAEyebrow">Voltage Stack</p>
-            <h3 id="tagGroupATitle">Levels carried in the model</h3>
+            <p class="eyebrow" id="tagGroupAEyebrow">Key Semantics</p>
+            <h3 id="tagGroupATitle">Parameters or media surfaced by the renderer</h3>
             <div class="tags" id="tagGroupAList"></div>
           </article>
 
           <article class="card">
-            <p class="eyebrow" id="tagGroupBEyebrow">Presentation Model</p>
-            <h3 id="tagGroupBTitle">How the single-line behaves</h3>
+            <p class="eyebrow" id="tagGroupBEyebrow">Layout Model</p>
+            <h3 id="tagGroupBTitle">How the renderer organizes the sheet</h3>
             <div class="tags" id="tagGroupBList"></div>
           </article>
 
           <article class="card">
-            <p class="eyebrow" id="libraryEyebrow">Symbol Library</p>
-            <h3 id="libraryTitle">Expanded device set</h3>
+            <p class="eyebrow" id="libraryEyebrow">Shipped Coverage</p>
+            <h3 id="libraryTitle">Representative device families</h3>
             <div class="tags" id="libraryTagList"></div>
           </article>
 
           <article class="card">
-            <p class="eyebrow" id="proofEyebrow">Why this example</p>
-            <h3 id="proofTitle">What the module proves</h3>
+            <p class="eyebrow" id="proofEyebrow">Why It Matters</p>
+            <h3 id="proofTitle">What this renderer contributes to the platform</h3>
             <ul class="list" id="proofList"></ul>
           </article>
         </div>

@@ -129,29 +129,29 @@ const showcases: ShowcaseDefinition[] = [
   {
     id: 'electrical',
     tabLabel: 'Electrical',
-    sectionTitle: 'Building electrical distribution single-line diagram',
-    sourceTitle: 'DSL used for the electrical showcase',
+    sectionTitle: 'Electrical power modeled as maintainable source',
+    sourceTitle: 'Electrical source model behind this view',
     source: electricalShowcaseSource,
     downloadBase: 'diagjs-electrical',
-    detailsEyebrow: 'Major Branches',
-    detailsTitle: 'Main downstream equipment',
+    detailsEyebrow: 'Use Case',
+    detailsTitle: 'Distribution groups carried in this model',
     details: electricalPrimaryFeeders,
     tagGroupA: {
-      eyebrow: 'Voltage Stack',
-      title: 'Levels carried in the model',
+      eyebrow: 'Key Semantics',
+      title: 'Electrical levels surfaced directly from source',
       resolve(layout) {
         return collectParamValues(layout.nodes, ['voltage', 'secondary', 'system']);
       },
     },
     tagGroupB: {
-      eyebrow: 'Presentation Model',
-      title: 'How the single-line behaves',
+      eyebrow: 'Layout Rules',
+      title: 'Renderer behaviors applied to the one-line',
       resolve() {
         return ['Source-only terminals', 'Assembly buses', 'Feeder buckets', 'Voltage strata', 'Wire legend', 'Detailed glyphs'];
       },
     },
-    libraryEyebrow: 'Symbol Library',
-    libraryTitle: 'Expanded device set',
+    libraryEyebrow: 'Shipped Coverage',
+    libraryTitle: 'Representative electrical and connected equipment',
     libraryTags: [
       'Utility',
       'Transformer',
@@ -180,16 +180,16 @@ const showcases: ShowcaseDefinition[] = [
       'Boiler',
       'Elevator',
     ],
-    proofEyebrow: 'Why this example',
-    proofTitle: 'What the electrical module proves',
+    proofEyebrow: 'Why It Matters',
+    proofTitle: 'What this renderer contributes to the platform',
     proofPoints: [
-      'Assemblies such as switchboards, panels, and MCCs render as structured input-main-bus-output elevations instead of generic boxes.',
-      'Source, assembly, and load roles control which terminal sides appear on the SVG so feeders land on physically valid faces.',
-      'Voltage parameters surface directly beside the equipment that owns them, which keeps the one-line readable without a separate schedule.',
-      'Mechanical and service-end devices render with dedicated glyphs so downstream loads do not collapse into placeholder symbols.',
+      'A compact DSL can describe utility service, transformation, distribution, and downstream loads without dropping into manual SVG editing.',
+      'Assemblies render as structured equipment groups, which makes the output closer to engineering deliverables and leaves room for richer internal detail as the library expands.',
+      'Voltage and system metadata stay attached to the equipment that owns them, supporting review today and stronger validation rules later.',
+      'The example already mixes electrical distribution with connected building loads, which is the direction the platform needs for broader coordination workflows.',
     ],
-    diagramTitle: 'Extensive building distribution model',
-    diagramNote: 'Source and SVG update together from the same inline DSL example.',
+    diagramTitle: 'Electrical one-line generated from source',
+    diagramNote: 'Study the source on the left, inspect the rendered one-line on the right, and use zoom or export controls while reviewing.',
     metrics: [
       { label: 'Nodes', note: 'distribution devices and end loads in the single-line demo', value: (layout) => layout.nodes.length },
       { label: 'Runs', note: 'hierarchy-routed feeder runs through the electrical example', value: (layout) => layout.edges.length },
@@ -197,7 +197,7 @@ const showcases: ShowcaseDefinition[] = [
       { label: 'Assemblies', note: 'major distribution groupings highlighted in the sidebar', value: () => electricalPrimaryFeeders.length },
     ],
     summary(layout) {
-      return `${layout.nodes.length} nodes and ${layout.edges.length} feeder runs are arranged as a utility-to-load single-line, with assemblies rendered as breaker-main-bus-output elevations rather than generic graph nodes.`;
+      return `${layout.nodes.length} devices and ${layout.edges.length} feeder relationships show how Diag.JS turns a terse power model into a readable one-line that is structured for reuse, review, and future validation.`;
     },
     render(source) {
       const layout = compileDiagram(parseDiagram(source));
@@ -207,29 +207,29 @@ const showcases: ShowcaseDefinition[] = [
   {
     id: 'hvac',
     tabLabel: 'HVAC',
-    sectionTitle: 'Mechanical HVAC schematic with airside and hydronic systems',
-    sourceTitle: 'DSL used for the HVAC showcase',
+    sectionTitle: 'Mechanical systems modeled as coordinated schematic source',
+    sourceTitle: 'HVAC source model behind this view',
     source: hvacShowcaseSource,
     downloadBase: 'diagjs-hvac',
-    detailsEyebrow: 'Major Systems',
-    detailsTitle: 'Mechanical stacks carried on the sheet',
+    detailsEyebrow: 'Use Case',
+    detailsTitle: 'Airside, hydronic, and controls groups in this model',
     details: hvacSystems,
     tagGroupA: {
-      eyebrow: 'Media Legend',
-      title: 'Duct and piping services in play',
+      eyebrow: 'Key Semantics',
+      title: 'Air and water services differentiated by the renderer',
       resolve(layout) {
         return getLaneMediaLabels(layout);
       },
     },
     tagGroupB: {
-      eyebrow: 'Lane Bands',
-      title: 'Disciplined placement model',
+      eyebrow: 'Layout Rules',
+      title: 'Bands used to keep the schematic legible',
       resolve(layout) {
         return getLaneLabels(layout);
       },
     },
-    libraryEyebrow: 'HVAC Library',
-    libraryTitle: 'Mechanical component coverage',
+    libraryEyebrow: 'Shipped Coverage',
+    libraryTitle: 'Representative mechanical components',
     libraryTags: [
       'Louver',
       'ERV',
@@ -253,16 +253,16 @@ const showcases: ShowcaseDefinition[] = [
       'Expansion Tank',
       'BMS',
     ],
-    proofEyebrow: 'Why this example',
-    proofTitle: 'What the HVAC module proves',
+    proofEyebrow: 'Why It Matters',
+    proofTitle: 'What this renderer contributes to the platform',
     proofPoints: [
-      'Airside, condenser, chilled-water, heating-water, terminal, exhaust, and controls content can live on one coordinated mechanical sheet.',
-      'Return paths and hydronic loops are handled as routed schematic connections instead of forcing the model into a feeder-only tree.',
-      'Discipline-specific symbols replace electrical placeholders, so coils, towers, pumps, valves, sensors, and VAVs read like mechanical drawings.',
-      '`lane`, `column`, and `slot` parameters provide stable author control when a schematic needs deliverable-style arrangement rather than auto-graph chaos.',
+      'One source model can carry plant equipment, airside equipment, hydronic loops, terminal devices, and controls on the same sheet.',
+      'Return paths and looped services are preserved as schematic routes instead of forcing the model into a feeder-only tree.',
+      'Lane, column, and slot controls give authors predictable placement now and provide a stable contract for richer layout tooling later.',
+      'Mechanical-specific symbols keep the output readable for designers while the underlying language stays consistent with the rest of the platform.',
     ],
-    diagramTitle: 'Office tower HVAC plant and airside model',
-    diagramNote: 'The renderer pins equipment to mechanical bands so plant, airside, return, and controls remain legible as the sheet grows.',
+    diagramTitle: 'HVAC schematic generated from source',
+    diagramNote: 'The renderer separates plant, airside, return, terminal, and controls content so larger mechanical diagrams stay readable as the library grows.',
     metrics: [
       { label: 'Components', note: 'mechanical devices rendered on dedicated schematic bands', value: (layout) => layout.nodes.length },
       { label: 'Media', note: 'distinct duct and piping services styled independently', value: (layout) => getLaneMediaCount(layout) },
@@ -270,7 +270,7 @@ const showcases: ShowcaseDefinition[] = [
       { label: 'Returns', note: 'reverse-routed return and loop connections retained in the example', value: (layout) => countReversedEdges(layout) },
     ],
     summary(layout) {
-      return `${layout.nodes.length} HVAC components are placed on ${getLaneCount(layout)} mechanical bands so supply air, return air, condenser water, chilled water, heating water, and controls read like a coordinated schematic instead of a generic graph.`;
+      return `${layout.nodes.length} HVAC components are arranged across ${getLaneCount(layout)} bands, showing how the shared DSL can support coordinated mechanical schematics without giving up discipline-specific notation.`;
     },
     render(source) {
       const layout = compileHvacDiagram(source);
@@ -280,29 +280,29 @@ const showcases: ShowcaseDefinition[] = [
   {
     id: 'network',
     tabLabel: 'Network',
-    sectionTitle: 'Data centre and campus network infrastructure schematic',
-    sourceTitle: 'DSL used for the data centre network showcase',
+    sectionTitle: 'Network infrastructure modeled as diagram code',
+    sourceTitle: 'Network source model behind this view',
     source: networkShowcaseSource,
     downloadBase: 'diagjs-network',
-    detailsEyebrow: 'Major Systems',
-    detailsTitle: 'Backbone, fabric, storage, and edge stacks',
+    detailsEyebrow: 'Use Case',
+    detailsTitle: 'Backbone, service, compute, storage, and edge groups',
     details: networkSystems,
     tagGroupA: {
-      eyebrow: 'Link Services',
-      title: 'Transport classes represented on the sheet',
+      eyebrow: 'Key Semantics',
+      title: 'Link classes surfaced by the renderer',
       resolve(layout) {
         return getLaneMediaLabels(layout);
       },
     },
     tagGroupB: {
-      eyebrow: 'Infrastructure Bands',
-      title: 'How the network is segmented',
+      eyebrow: 'Layout Rules',
+      title: 'Bands used to separate infrastructure roles',
       resolve(layout) {
         return getLaneLabels(layout);
       },
     },
-    libraryEyebrow: 'Network Library',
-    libraryTitle: 'Infrastructure coverage',
+    libraryEyebrow: 'Shipped Coverage',
+    libraryTitle: 'Representative network equipment',
     libraryTags: [
       'Carrier Cloud',
       'WAN Router',
@@ -324,16 +324,16 @@ const showcases: ShowcaseDefinition[] = [
       'Wireless Controller',
       'Security Stack',
     ],
-    proofEyebrow: 'Why this example',
-    proofTitle: 'What the network module proves',
+    proofEyebrow: 'Why It Matters',
+    proofTitle: 'What this renderer contributes to the platform',
     proofPoints: [
-      'A realistic data centre architecture can be carried as a lane-based infrastructure drawing instead of collapsing core, services, fabric, storage, and edge into one flat tier.',
-      'Campus, building, and OT edge segments can sit beside the data centre fabric on the same sheet without losing readability.',
-      'Link media such as WAN, 400G backbone, 100G fabric, Fibre Channel, management, Wi-Fi, and security overlays are visually differentiated from each other.',
-      'Racks, switching, security, storage, and gateway devices render as recognizable hardware elevations rather than generic rounded boxes.',
+      'The same text-first workflow can describe carrier ingress, campus backbone, security, shared services, compute fabric, storage, and building edge.',
+      'Connection media remain explicit, which makes backbone, fabric, management, wireless, and security links reviewable instead of implied.',
+      'Recognizable device glyphs make the output useful for infrastructure planning now while leaving room for deeper topology rules later.',
+      'The example shows how Diag.JS can evolve beyond building services into broader infrastructure diagramming without inventing a new authoring model.',
     ],
-    diagramTitle: 'Resilient data centre and campus network',
-    diagramNote: 'The example mixes carrier, campus, core, shared services, compute fabric, storage, and mixed-use building edge on one coordinated sheet.',
+    diagramTitle: 'Network architecture generated from source',
+    diagramNote: 'This example keeps backbone, services, compute, storage, and edge layers separate so a large network can still be reviewed as one coordinated diagram.',
     metrics: [
       { label: 'Nodes', note: 'network devices and infrastructure groups on the schematic', value: (layout) => layout.nodes.length },
       { label: 'Links', note: 'transport links across the routed architecture', value: (layout) => layout.edges.length },
@@ -341,7 +341,7 @@ const showcases: ShowcaseDefinition[] = [
       { label: 'Edge Sites', note: 'building and user-edge nodes attached to the campus fabric', value: (layout) => countNodesByLane(layout, ['building', 'edge']) },
     ],
     summary(layout) {
-      return `${layout.nodes.length} infrastructure nodes and ${layout.edges.length} routed links cover carrier ingress, campus backbone, border security, shared services, leaf-spine compute fabric, storage, and mixed-use building edge in one data centre network schematic.`;
+      return `${layout.nodes.length} infrastructure nodes and ${layout.edges.length} routed links show how the platform can scale from building edge networks to data-centre and campus architecture within the same authoring model.`;
     },
     render(source) {
       const layout = compileNetworkDiagram(source);
@@ -351,29 +351,29 @@ const showcases: ShowcaseDefinition[] = [
   {
     id: 'fire-alarm',
     tabLabel: 'Fire Alarm',
-    sectionTitle: 'Campus fire alarm and emergency voice architecture',
-    sourceTitle: 'DSL used for the fire alarm showcase',
+    sectionTitle: 'Fire alarm architecture modeled from command to field',
+    sourceTitle: 'Fire alarm source model behind this view',
     source: fireAlarmShowcaseSource,
     downloadBase: 'diagjs-fire-alarm',
-    detailsEyebrow: 'Major Systems',
-    detailsTitle: 'Command, network, panel, and field layers',
+    detailsEyebrow: 'Use Case',
+    detailsTitle: 'Command, network, panel, and field groups in this model',
     details: fireAlarmSystems,
     tagGroupA: {
-      eyebrow: 'Circuit Types',
-      title: 'Network, loop, and notification classes',
+      eyebrow: 'Key Semantics',
+      title: 'Circuit classes surfaced by the renderer',
       resolve(layout) {
         return getLaneMediaLabels(layout);
       },
     },
     tagGroupB: {
-      eyebrow: 'Functional Bands',
-      title: 'How the campus system is organized',
+      eyebrow: 'Layout Rules',
+      title: 'Bands used to separate fire alarm roles',
       resolve(layout) {
         return getLaneLabels(layout);
       },
     },
-    libraryEyebrow: 'Fire Alarm Library',
-    libraryTitle: 'Head-end to device coverage',
+    libraryEyebrow: 'Shipped Coverage',
+    libraryTitle: 'Representative head-end, panel, and field devices',
     libraryTags: [
       'Command Center',
       'Distributed Node',
@@ -399,16 +399,16 @@ const showcases: ShowcaseDefinition[] = [
       'Smoke Control',
       'Elevator Recall',
     ],
-    proofEyebrow: 'Why this example',
-    proofTitle: 'What the fire alarm module proves',
+    proofEyebrow: 'Why It Matters',
+    proofTitle: 'What this renderer contributes to the platform',
     proofPoints: [
-      'The renderer can represent a real campus fire alarm topology from the command head-end through peer nodes, FACPs, annunciation, addressable loops, notification circuits, and specialty interfaces.',
-      'Notification, SLC, supervisory, and releasing paths are separate media classes instead of one undifferentiated connection style.',
-      'Panels, annunciators, repeaters, boosters, and field devices render with dedicated fire-alarm hardware symbols and detector marks.',
-      'Large mixed-use campuses remain readable because command, network, panel, annunciation, loop, notification, specialty, and field layers are explicitly separated.',
+      'A single model can span command head-end, peer nodes, FACPs, annunciation, loops, notification, and specialty interfaces.',
+      'Notification, SLC, supervisory, releasing, and network paths stay distinct, which is essential for clear review and future rule enforcement.',
+      'Dedicated symbols keep panels, interfaces, and field devices readable without flattening the system into generic boxes.',
+      'The layered layout shows how Diag.JS can grow toward more rigorous life-safety documentation while still using the shared core language.',
     ],
-    diagramTitle: 'Multi-building campus fire alarm network',
-    diagramNote: 'The example spans tower, hotel, commons, retail, lab, garage, and specialty suppression / smoke-control integrations on one fire alarm sheet.',
+    diagramTitle: 'Fire alarm system generated from source',
+    diagramNote: 'The renderer separates command, network, panel, annunciation, notification, specialty, and field layers so large systems remain legible.',
     metrics: [
       { label: 'Nodes', note: 'head-end, nodes, panels, interfaces, and devices in the example', value: (layout) => layout.nodes.length },
       { label: 'Circuits', note: 'network, loop, notification, and specialty paths shown', value: (layout) => layout.edges.length },
@@ -416,7 +416,7 @@ const showcases: ShowcaseDefinition[] = [
       { label: 'Field Devices', note: 'field and notification endpoints driven from the system', value: (layout) => countNodesByLane(layout, ['field', 'notification']) },
     ],
     summary(layout) {
-      return `${layout.nodes.length} devices and interfaces map a campus head-end through distributed nodes, FACPs, annunciation, SLC loops, notification circuits, and releasing integrations all the way down to field appliances.`;
+      return `${layout.nodes.length} devices and interfaces show how the shared DSL can represent campus-scale fire alarm architecture from head-end command through panels and field appliances.`;
     },
     render(source) {
       const layout = compileFireAlarmDiagram(source);
@@ -426,29 +426,29 @@ const showcases: ShowcaseDefinition[] = [
   {
     id: 'lighting-control',
     tabLabel: 'Lighting Control',
-    sectionTitle: 'Campus lighting control architecture',
-    sourceTitle: 'DSL used for the lighting control showcase',
+    sectionTitle: 'Lighting control modeled across enterprise, room, and field layers',
+    sourceTitle: 'Lighting control source model behind this view',
     source: lightingControlShowcaseSource,
     downloadBase: 'diagjs-lighting-control',
-    detailsEyebrow: 'Major Systems',
-    detailsTitle: 'Head-end, panel, room, and fixture layers',
+    detailsEyebrow: 'Use Case',
+    detailsTitle: 'Head-end, panel, room, and fixture groups in this model',
     details: lightingControlSystems,
     tagGroupA: {
-      eyebrow: 'Control Media',
-      title: 'Protocols and control classes represented',
+      eyebrow: 'Key Semantics',
+      title: 'Control media surfaced by the renderer',
       resolve(layout) {
         return getLaneMediaLabels(layout);
       },
     },
     tagGroupB: {
-      eyebrow: 'Functional Bands',
-      title: 'Lighting control placement model',
+      eyebrow: 'Layout Rules',
+      title: 'Bands used to organize the control stack',
       resolve(layout) {
         return getLaneLabels(layout);
       },
     },
-    libraryEyebrow: 'Lighting Library',
-    libraryTitle: 'Control and field coverage',
+    libraryEyebrow: 'Shipped Coverage',
+    libraryTitle: 'Representative control, sensing, and load devices',
     libraryTags: [
       'Head-End Server',
       'Gateway',
@@ -466,16 +466,16 @@ const showcases: ShowcaseDefinition[] = [
       'Fixture Group',
       'Emergency Interface',
     ],
-    proofEyebrow: 'Why this example',
-    proofTitle: 'What the lighting module proves',
+    proofEyebrow: 'Why It Matters',
+    proofTitle: 'What this renderer contributes to the platform',
     proofPoints: [
-      'Enterprise head-end, gateways, panel cabinets, room controls, sensors, fixture groups, exterior controls, and emergency interfaces can live on one lighting control sheet.',
-      'Ethernet, DALI, 0-10V, relay, sensor bus, exterior, and emergency sense links each receive their own visual treatment.',
-      'The example covers mixed-use office, hospitality, ballroom, retail, food hall, plaza, and garage programs instead of a single-room toy case.',
-      'Lighting devices render as recognizable cabinets, controllers, stations, sensors, photocells, and luminaires rather than abstract graph symbols.',
+      'The source model can cover enterprise head-end, gateways, panels, room controls, sensors, fixtures, exterior lighting, and emergency interfaces together.',
+      'Ethernet, DALI, 0-10V, relay, sensor, exterior, and emergency links each remain visible as first-class control media.',
+      'The output reads like lighting control documentation rather than a generic network graph, which makes the diagrams usable now.',
+      'This renderer demonstrates how future systems can layer protocol semantics and device-specific symbols onto the shared platform without forking the DSL.',
     ],
-    diagramTitle: 'Mixed-use campus lighting control system',
-    diagramNote: 'The example combines enterprise head-end, panel cabinets, room controls, sensors, fixture groups, site lighting, and emergency sense integration.',
+    diagramTitle: 'Lighting control architecture generated from source',
+    diagramNote: 'The example keeps enterprise, panel, room, sensor, fixture, exterior, and emergency layers readable while using the same core authoring model.',
     metrics: [
       { label: 'Nodes', note: 'controllers, cabinets, sensors, and loads on the sheet', value: (layout) => layout.nodes.length },
       { label: 'Control Paths', note: 'backbone, room-control, and fixture-control links', value: (layout) => layout.edges.length },
@@ -483,7 +483,7 @@ const showcases: ShowcaseDefinition[] = [
       { label: 'Lighting Loads', note: 'fixture and exterior load groups coordinated by the system', value: (layout) => countNodesByLane(layout, ['fixture', 'exterior']) },
     ],
     summary(layout) {
-      return `${layout.nodes.length} devices coordinate head-end software, gateways, relay and dimming cabinets, room controllers, sensors, fixture groups, exterior lighting, and emergency interfaces across a mixed-use campus.`;
+      return `${layout.nodes.length} devices coordinate head-end software, panels, room controls, sensors, fixtures, exterior lighting, and emergency interfaces, illustrating how the platform can grow into richer controls documentation.`;
     },
     render(source) {
       const layout = compileLightingControlDiagram(source);
@@ -610,24 +610,24 @@ function renderLandingMetrics(): void {
 function createLandingMetrics(definitions: ShowcaseDefinition[]): LandingMetric[] {
   return [
     {
-      label: 'System Families',
+      label: 'Supported Systems',
       value: definitions.length,
-      note: 'electrical, HVAC, network, fire alarm, and lighting control renderers',
+      note: 'renderer families currently shipped across the platform',
     },
     {
       label: 'Device Families',
       value: countUniqueText(definitions.flatMap((definition) => definition.libraryTags)),
-      note: 'named device and equipment families surfaced across the shipped libraries',
+      note: 'named equipment and device families available in the shipped libraries',
     },
     {
-      label: 'Connection Styles',
+      label: 'Connection Semantics',
       value: TOOL_CONNECTION_STYLE_COUNT,
-      note: 'explicit wire, media, circuit, piping, and control-link treatments',
+      note: 'visual and logical connection treatments encoded by the renderers',
     },
     {
       label: 'Layout Bands',
       value: TOOL_LAYOUT_BAND_COUNT,
-      note: 'discipline lanes used to organize the lane-based renderers',
+      note: 'reusable lane definitions used by the band-aware systems',
     },
   ];
 }
