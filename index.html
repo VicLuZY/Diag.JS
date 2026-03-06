@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="./assets/diagjs-logo.svg" />
-    <title>Diag.JS | Extensive SLD showcase</title>
+    <title>Diag.JS | Electrical and HVAC schematics</title>
     <style>
       :root {
         color-scheme: light;
@@ -29,6 +29,10 @@
       body {
         margin: 0;
         min-height: 100%;
+      }
+
+      html {
+        scroll-behavior: smooth;
       }
 
       body {
@@ -175,6 +179,10 @@
         letter-spacing: 0.02em;
         text-decoration: none;
         box-shadow: 0 16px 30px -18px rgba(33, 55, 72, 0.74);
+      }
+
+      .button.secondary {
+        background: linear-gradient(135deg, #8b5b35, #67442a);
       }
 
       .hero-stats {
@@ -369,13 +377,13 @@
         pointer-events: none;
       }
 
-      #diagram {
+      .diagram-canvas {
         position: relative;
         z-index: 1;
         min-width: 100%;
       }
 
-      #diagram svg {
+      .diagram-canvas svg {
         display: block;
         min-width: 100%;
         max-width: none;
@@ -479,52 +487,54 @@
           <div class="brand-lockup">
             <img class="brand-mark" src="./assets/diagjs-logo.svg" alt="Diag.JS logo" width="76" height="76" />
             <div>
-              <p class="eyebrow">Diag.JS / Extensive SLD Showcase</p>
-              <p class="brand-copy">Text-to-SVG electrical diagrams with deliverable-style presentation.</p>
+              <p class="eyebrow">Diag.JS / Building Systems Showcase</p>
+              <p class="brand-copy">Text-to-SVG schematics for electrical single-lines and mechanical HVAC drawings.</p>
             </div>
           </div>
-          <h1>Large single-line diagrams rendered like deliverables, not raw markup.</h1>
+          <h1>Building-system schematics rendered like deliverables, not toy graphs.</h1>
           <p class="lede">
-            This homepage now leads with a full building electrical distribution example so the branch demonstrates
-            scale, feeder hierarchy, equipment parameters, and source-to-SVG rendering on first load.
+            The homepage now carries two full discipline demos: a building electrical distribution single-line and an
+            HVAC mechanical schematic with explicit condenser water, chilled water, heating water, airside, terminal,
+            and controls bands.
           </p>
           <div class="hero-actions">
-            <a class="button" href="#showcase">Inspect the live example</a>
-            <span class="footer-note">Scroll the sheet to review the full feeder ladder and equipment data.</span>
+            <a class="button" href="#electrical-showcase">Electrical Demo</a>
+            <a class="button secondary" href="#hvac-showcase">HVAC Demo</a>
+            <span class="footer-note">Both sheets are rendered live from inline DSL examples on the same homepage.</span>
           </div>
         </div>
 
         <aside class="hero-stats" aria-label="Diagram statistics">
           <article class="stat-card stat-card-hero">
-            <span class="stat-label">Rendered Nodes</span>
-            <strong class="stat-value" data-stat="nodes">0</strong>
-            <span class="stat-note">distribution equipment and end loads in the live SVG</span>
+            <span class="stat-label">Electrical Nodes</span>
+            <strong class="stat-value" data-stat="electricalNodes">0</strong>
+            <span class="stat-note">distribution devices and end loads in the single-line demo</span>
           </article>
           <article class="stat-card">
-            <span class="stat-label">Orthogonal Edges</span>
-            <strong class="stat-value" data-stat="edges">0</strong>
-            <span class="stat-note">hierarchy-routed wire runs through the example</span>
+            <span class="stat-label">Electrical Runs</span>
+            <strong class="stat-value" data-stat="electricalEdges">0</strong>
+            <span class="stat-note">hierarchy-routed feeder runs through the electrical example</span>
           </article>
           <article class="stat-card">
-            <span class="stat-label">Primary Feeders</span>
-            <strong class="stat-value" data-stat="feeders">0</strong>
-            <span class="stat-note">major downstream branches from the main switchboard</span>
+            <span class="stat-label">HVAC Components</span>
+            <strong class="stat-value" data-stat="hvacComponents">0</strong>
+            <span class="stat-note">mechanical devices rendered on the HVAC schematic bands</span>
           </article>
           <article class="stat-card">
-            <span class="stat-label">Voltage Designations</span>
-            <strong class="stat-value" data-stat="voltages">0</strong>
-            <span class="stat-note">service, distribution, and branch systems shown</span>
+            <span class="stat-label">HVAC Media</span>
+            <strong class="stat-value" data-stat="hvacMedia">0</strong>
+            <span class="stat-note">duct and piping service types styled independently</span>
           </article>
         </aside>
       </section>
 
-      <section class="showcase" id="showcase">
+      <section class="showcase" id="electrical-showcase">
         <div class="showcase-head">
           <div>
             <p class="eyebrow">Live Diagram</p>
             <h2>Building electrical distribution single-line diagram</h2>
           </div>
-          <p class="section-copy" id="summary">
+          <p class="section-copy" id="electricalSummary">
             The demo combines utility service, main transformation, switchboard distribution, lighting/receptacle
             step-down service, motor control centers, and downstream end loads.
           </p>
@@ -535,13 +545,13 @@
             <article class="card">
               <p class="eyebrow">Major Branches</p>
               <h3>Main downstream equipment</h3>
-              <ul class="list" id="branchList"></ul>
+              <ul class="list" id="electricalBranchList"></ul>
             </article>
 
             <article class="card">
               <p class="eyebrow">Voltage Stack</p>
               <h3>Levels carried in the model</h3>
-              <div class="tags" id="voltageTags"></div>
+              <div class="tags" id="electricalVoltageTags"></div>
             </article>
 
             <article class="card">
@@ -598,7 +608,7 @@
               <p class="diagram-note">Source and SVG update together from the same inline example.</p>
             </header>
             <div class="diagram-wrap">
-              <div id="diagram"></div>
+              <div class="diagram-canvas" id="electricalDiagram"></div>
             </div>
           </section>
         </div>
@@ -606,14 +616,109 @@
 
       <section class="source-section">
         <p class="eyebrow">Example Source</p>
-        <h2>DSL used for the homepage showcase</h2>
+        <h2>DSL used for the electrical showcase</h2>
         <div class="source-wrap">
-          <pre id="source"><code></code></pre>
+          <pre id="electricalSource"><code></code></pre>
+        </div>
+      </section>
+
+      <section class="showcase" id="hvac-showcase">
+        <div class="showcase-head">
+          <div>
+            <p class="eyebrow">Live Diagram</p>
+            <h2>Mechanical HVAC schematic with airside and hydronic systems</h2>
+          </div>
+          <p class="section-copy" id="hvacSummary">
+            The demo coordinates condenser water, chilled water, heating water, airside processing, terminal units,
+            and DDC controls as a mechanical-style schematic rather than a generic node-link graph.
+          </p>
+        </div>
+
+        <div class="showcase-grid">
+          <aside class="sidebar">
+            <article class="card">
+              <p class="eyebrow">Major Systems</p>
+              <h3>Mechanical stacks carried on the sheet</h3>
+              <ul class="list" id="hvacBranchList"></ul>
+            </article>
+
+            <article class="card">
+              <p class="eyebrow">Media Legend</p>
+              <h3>Duct and piping services in play</h3>
+              <div class="tags" id="hvacMediaTags"></div>
+            </article>
+
+            <article class="card">
+              <p class="eyebrow">Lane Bands</p>
+              <h3>Disciplined placement model</h3>
+              <div class="tags" id="hvacLaneTags"></div>
+            </article>
+
+            <article class="card">
+              <p class="eyebrow">HVAC Library</p>
+              <h3>Mechanical component coverage</h3>
+              <div class="tags">
+                <span class="tag">Louver</span>
+                <span class="tag">ERV</span>
+                <span class="tag">Mixing Box</span>
+                <span class="tag">Filter</span>
+                <span class="tag">Cooling Coil</span>
+                <span class="tag">Heating Coil</span>
+                <span class="tag">Humidifier</span>
+                <span class="tag">Supply Fan</span>
+                <span class="tag">VAV</span>
+                <span class="tag">FCU</span>
+                <span class="tag">Diffuser</span>
+                <span class="tag">Return Grille</span>
+                <span class="tag">Chiller</span>
+                <span class="tag">Cooling Tower</span>
+                <span class="tag">Boiler</span>
+                <span class="tag">Pump</span>
+                <span class="tag">Strainer</span>
+                <span class="tag">Control Valve</span>
+                <span class="tag">Separator</span>
+                <span class="tag">Expansion Tank</span>
+                <span class="tag">BMS</span>
+              </div>
+            </article>
+
+            <article class="card">
+              <p class="eyebrow">Why this example</p>
+              <h3>What the HVAC module proves</h3>
+              <ul class="list">
+                <li>Looped hydronic returns can be rendered without collapsing the schematic into an invalid DAG.</li>
+                <li>Mechanical components now render with discipline-specific SVG symbols instead of electrical placeholders.</li>
+                <li>`lane`, `column`, and `slot` params let authors place condenser, chilled, heating, airside, and controls on stable bands.</li>
+                <li>Edge media labels drive visual differentiation between OA, SA, RA, CHWS, CHWR, HHWS, HHWR, and controls.</li>
+              </ul>
+            </article>
+          </aside>
+
+          <section class="diagram-panel" aria-label="Rendered HVAC mechanical schematic">
+            <header class="diagram-meta">
+              <div>
+                <p class="eyebrow">Rendered From DSL</p>
+                <h3>Office tower HVAC plant and airside model</h3>
+              </div>
+              <p class="diagram-note">The renderer keeps supply, return, plant, and controls readable by pinning nodes to explicit mechanical lanes.</p>
+            </header>
+            <div class="diagram-wrap">
+              <div class="diagram-canvas" id="hvacDiagram"></div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="source-section">
+        <p class="eyebrow">Example Source</p>
+        <h2>DSL used for the HVAC showcase</h2>
+        <div class="source-wrap">
+          <pre id="hvacSource"><code></code></pre>
         </div>
       </section>
 
       <footer>
-        <a href="https://github.com/VicLuZY/Diag.JS">GitHub</a> · MIT · `develop` homepage now centered on the extensive SLD example
+        <a href="https://github.com/VicLuZY/Diag.JS">GitHub</a> · MIT · `develop` now showcases both electrical and HVAC deliverable-style schematics
       </footer>
     </div>
 
