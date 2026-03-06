@@ -79,6 +79,7 @@
       }
 
       .hero,
+      .docs-section,
       .showcase,
       .source-section {
         border: 1px solid rgba(255, 255, 255, 0.74);
@@ -231,6 +232,57 @@
       .showcase {
         margin-top: 26px;
         padding: 28px;
+      }
+
+      .docs-section {
+        margin-top: 26px;
+        padding: 28px;
+      }
+
+      .docs-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+        gap: 22px;
+        align-items: start;
+      }
+
+      .docs-points {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 18px;
+      }
+
+      .docs-card {
+        padding: 18px;
+      }
+
+      .docs-card h3 {
+        font-size: 1.15rem;
+        line-height: 1.08;
+      }
+
+      .docs-card p {
+        margin: 10px 0 0;
+        line-height: 1.55;
+        color: var(--muted);
+      }
+
+      .docs-actions {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+        margin-top: 22px;
+      }
+
+      .docs-summary {
+        display: grid;
+        gap: 16px;
+      }
+
+      .docs-summary .card h3 {
+        font-size: 1.4rem;
       }
 
       .showcase-head {
@@ -515,8 +567,13 @@
 
       @media (max-width: 1180px) {
         .hero,
+        .docs-grid,
         .showcase-workspace {
           grid-template-columns: 1fr;
+        }
+
+        .docs-points {
+          grid-template-columns: 1fr 1fr;
         }
 
         .showcase-head {
@@ -537,6 +594,15 @@
         }
 
         .hero-stats {
+          grid-template-columns: 1fr;
+        }
+
+        .docs-section {
+          padding: 18px;
+          border-radius: 22px;
+        }
+
+        .docs-points {
           grid-template-columns: 1fr;
         }
 
@@ -592,9 +658,10 @@
             styling so one authoring model can scale from single-line distribution to campus-scale system diagrams.
           </p>
           <div class="hero-actions">
+            <a class="button" href="./docs/">Read Documentation</a>
             <a class="button" href="#demo-showcase">Explore Live Workspace</a>
             <a class="button secondary" href="https://github.com/VicLuZY/Diag.JS">View Repository</a>
-            <span class="footer-note">The overview cards below describe the tool itself; the workspace shows one full example at a time.</span>
+            <span class="footer-note">The homepage now exposes both the interactive workspace and the full documentation site.</span>
           </div>
         </div>
 
@@ -620,6 +687,69 @@
             <span class="stat-note" data-metric-note="3">discipline lanes used to organize the lane-based renderers</span>
           </article>
         </aside>
+      </section>
+
+      <section class="docs-section" aria-label="Documentation overview">
+        <div class="docs-grid">
+          <div>
+            <p class="eyebrow">Documentation</p>
+            <h2>Reference the language, renderer behavior, and source-backed libraries from the same site.</h2>
+            <p class="lede" style="margin-top: 18px; max-width: 68ch;">
+              The documentation site covers the DSL grammar, statement syntax, parameter semantics, rendering model,
+              system-specific authoring guidance, generated symbol and media inventories, public API, architecture, and
+              contribution rules. It is built with VitePress and published alongside the demo at
+              <a href="./docs/" style="color: var(--accent); text-decoration: none; font-weight: 700;"><code>/docs/</code></a>.
+            </p>
+            <div class="docs-points">
+              <article class="card docs-card">
+                <p class="eyebrow">Language</p>
+                <h3>Grammar, syntax, params, and validation</h3>
+                <p>Every statement form, reserved parameter, fallback rule, and current parser/compiler error is documented explicitly.</p>
+              </article>
+              <article class="card docs-card">
+                <p class="eyebrow">Systems</p>
+                <h3>Per-renderer guides</h3>
+                <p>Electrical, HVAC, network, fire alarm, and lighting control each have dedicated authoring guidance and examples.</p>
+              </article>
+              <article class="card docs-card">
+                <p class="eyebrow">Reference</p>
+                <h3>Generated device, lane, and media inventories</h3>
+                <p>Symbol families, aliases, lanes, wire types, and media classes are generated from source so the docs scale with the codebase.</p>
+              </article>
+              <article class="card docs-card">
+                <p class="eyebrow">Contributing</p>
+                <h3>Rules for extending both code and docs</h3>
+                <p>The docs explain how to add systems, devices, and generated reference coverage without drifting from the implementation.</p>
+              </article>
+            </div>
+            <div class="docs-actions">
+              <a class="button" href="./docs/">Open Documentation</a>
+              <a class="button secondary" href="./docs/language/grammar">Read the Grammar</a>
+            </div>
+          </div>
+
+          <aside class="docs-summary">
+            <article class="card">
+              <p class="eyebrow">Docs Coverage</p>
+              <h3>What is documented</h3>
+              <ul class="list">
+                <li>Grammar, lexical rules, statement formats, ordering constraints, and validation errors.</li>
+                <li>Parameter semantics, renderer behavior, heuristics, wire/media inference, and layout controls.</li>
+                <li>Public API usage, architecture, equipment modeling, extensibility, and contribution workflow.</li>
+                <li>Generated reference pages for symbols, aliases, lanes, voltage strata, and connection classes.</li>
+              </ul>
+            </article>
+
+            <article class="card">
+              <p class="eyebrow">Deployment</p>
+              <h3>Published with the main site</h3>
+              <p style="margin-top: 10px;">
+                The main site build now includes the VitePress output under <code>/docs/</code>, so the documentation
+                is visible from the homepage and deploys with the rest of the app.
+              </p>
+            </article>
+          </aside>
+        </div>
       </section>
 
       <section class="showcase" id="demo-showcase">

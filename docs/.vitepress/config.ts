@@ -1,9 +1,19 @@
 import { defineConfig } from 'vitepress';
 
+function getDocsBase(): string {
+  if (process.env.VITEPRESS_BASE_PATH) {
+    return process.env.VITEPRESS_BASE_PATH;
+  }
+
+  const appBase = process.env.VITE_BASE_PATH ?? '/';
+  const normalized = appBase === '/' ? '/' : `${appBase.replace(/\/?$/, '/')}`;
+  return `${normalized}docs/`;
+}
+
 export default defineConfig({
   title: 'Diag.JS',
   description: 'Comprehensive documentation for the Diag.JS building-systems diagram DSL and renderers.',
-  base: process.env.VITEPRESS_BASE_PATH ?? '/',
+  base: getDocsBase(),
   cleanUrls: true,
   lastUpdated: true,
   themeConfig: {

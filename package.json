@@ -10,7 +10,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build:app": "vite build",
+    "build": "node scripts/build-site.mjs",
     "preview": "vite preview",
     "docs:generate": "node scripts/generate-docs.mjs",
     "docs:dev": "npm run docs:generate && vitepress dev docs",
